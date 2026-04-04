@@ -48,13 +48,21 @@ export class D1Repo {
 
   async getAllVotesForDates(dates) {
     if (!dates.length) return {};
-    const placeholders = dates.map(() => '?').join(',');
+    // D1/SQLite may cap bound variables (~255). Avoid `IN (?,?,…)` for long windows;
+    // rolling days are contiguous in ISO order, so a range uses two binds only.
+    const sorted = [...dates].sort();
+    const minD = sorted[0];
+    const maxD = sorted[sorted.length - 1];
     const res = await this._db
-      .prepare(`SELECT player_id, date, vote FROM votes WHERE date IN (${placeholders})`)
-      .bind(...dates)
+      .prepare(
+        'SELECT player_id, date, vote FROM votes WHERE date >= ? AND date <= ? ORDER BY date ASC'
+      )
+      .bind(minD, maxD)
       .all();
+    const allowed = new Set(dates);
     const out = {};
     (res.results || []).forEach(r => {
+      if (!allowed.has(r.date)) return;
       if (!out[r.date]) out[r.date] = {};
       out[r.date][r.player_id] = r.vote || '';
     });
