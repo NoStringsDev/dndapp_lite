@@ -1,0 +1,18 @@
+{
+  "name": "dndapp_lite",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lightweight D&D party availability and session confirmation (Cloudflare Pages + D1)",
+  "scripts": {
+    "dev": "wrangler pages dev public --d1=DB",
+    "dev:fresh": "npm run db:migrate:local && npm run db:seed:local && npm run dev",
+    "deploy": "wrangler pages deploy public",
+    "db:create": "wrangler d1 create dndapp-lite-db",
+    "db:migrate:local": "wrangler d1 execute dndapp-lite-db --file=./migrations/0001_init.sql --local",
+    "db:migrate:remote": "wrangler d1 execute dndapp-lite-db --file=./migrations/0001_init.sql --remote",
+    "db:seed:local": "wrangler d1 execute dndapp-lite-db --file=./seed-dev.sql --local"
+  },
+  "devDependencies": {
+    "wrangler": "^3.99.0"
+  }
+}

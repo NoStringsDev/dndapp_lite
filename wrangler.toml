@@ -1,0 +1,13 @@
+name                   = "dndapp-lite"
+compatibility_date     = "2024-09-23"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding           = "DB"
+database_name     = "dndapp-lite-db"
+# Replace with output of: npx wrangler d1 create dndapp-lite-db
+# Replace with your real id from: npx wrangler d1 create dndapp-lite-db
+database_id       = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+preview_database_id = "DB"
+
+# GROUP_SECRET — set in Cloudflare Pages → Settings → Environment variables (secret)

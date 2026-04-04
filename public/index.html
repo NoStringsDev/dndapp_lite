@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>The Green Hunger — Sessions</title>
+  <meta name="description" content="Coordinate sessions for The Green Hunger and Arcadia games."/>
+  <meta name="theme-color" content="#0d1210"/>
+  <meta name="apple-mobile-web-app-title" content="Green Hunger"/>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg"/>
+  <link rel="apple-touch-icon" href="./favicon.svg"/>
+  <script>
+  (function(){
+    var m = {
+      name: 'The Green Hunger — Sessions',
+      short_name: 'Green Hunger',
+      description: 'Party availability and confirmed sessions',
+      start_url: './',
+      display: 'standalone',
+      background_color: '#0d1210',
+      theme_color: '#0d1210',
+      icons: [
+        { src: './favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }
+      ]
+    };
+    var link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(m));
+    document.head.appendChild(link);
+  })();
+  </script>
+  <style>
+  :root {
+    --bg-deep: #0a0f0c;
+    --bg-card: #121a16;
+    --bg-elevated: #18231d;
+    --mist: rgba(120, 160, 130, 0.08);
+    --accent: #6b9f7d;
+    --accent-hover: #7fb892;
+    --accent-muted: #3d5c4a;
+    --text: #e4eae6;
+    --text-dim: #8fa396;
+    --border: #2a3830;
+    --avail: #4a8a62;
+    --maybe: #b89a5a;
+    --nay: #7a5a5a;
+    --radius: 10px;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    font-family: var(--font);
+    background: var(--bg-deep);
+    background-image:
+      radial-gradient(ellipse 120% 80% at 50% -20%, rgba(90, 130, 100, 0.18), transparent 55%),
+      linear-gradient(180deg, var(--bg-deep) 0%, #0d1512 100%);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  .screen { max-width: 720px; margin: 0 auto; padding: 16px 14px 48px; }
+  h1 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 6px;
+    color: var(--accent);
+  }
+  .sub { font-size: 0.82rem; color: var(--text-dim); line-height: 1.45; margin-bottom: 18px; }
+  .gate-card, .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  }
+  label { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 6px; }
+  input[type="password"], input[type="text"], input[type="time"], select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
+    font-size: 0.95rem;
+  }
+  textarea { min-height: 56px; resize: vertical; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 10px 16px; border-radius: 8px; border: none;
+    font-weight: 600; font-size: 0.88rem; cursor: pointer;
+    background: var(--accent-muted); color: var(--text);
+  }
+  .btn-primary { background: linear-gradient(180deg, var(--accent) 0%, var(--accent-muted) 100%); color: #0a100c; }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
+  .row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .app-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  .who { font-size: 0.8rem; color: var(--text-dim); }
+  .day-row {
+    display: grid;
+    grid-template-columns: 88px 1fr auto;
+    gap: 8px 10px;
+    align-items: start;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(42,56,48,0.6);
+  }
+  .day-row:last-child { border-bottom: none; }
+  .day-meta { font-size: 0.78rem; color: var(--text-dim); line-height: 1.3; }
+  .day-meta strong { display: block; color: var(--text); font-size: 0.9rem; }
+  .vote-pills { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .vp { font-size: 0.65rem; padding: 2px 6px; border-radius: 999px; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-dim); }
+  .vp.avail { border-color: var(--avail); color: #b8dcc4; }
+  .vp.maybe { border-color: var(--maybe); color: #e8d9b8; }
+  .vp.nope { border-color: var(--nay); color: #d4b8b8; }
+  .my-vote { display: flex; gap: 4px; flex-wrap: wrap; }
+  .my-vote button {
+    font-size: 0.68rem; padding: 4px 8px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text-dim); cursor: pointer;
+  }
+  .my-vote button.on { border-color: var(--accent); color: var(--accent); background: rgba(107,159,125,0.12); }
+  .badge-ft { font-size: 0.62rem; padding: 2px 8px; border-radius: 999px; background: rgba(107,159,125,0.2); color: var(--accent); font-weight: 700; }
+  .day-actions-col { text-align: right; min-width: 92px; }
+  .day-actions-col .btn { width: 100%; margin-top: 4px; font-size: 0.72rem; padding: 6px 8px; }
+  .confirmed-widget {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .confirmed-hdr {
+    padding: 10px 12px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+    background: rgba(107,159,125,0.06);
+  }
+  .confirmed-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(42,56,48,0.5);
+    cursor: pointer;
+  }
+  .confirmed-row:last-child { border-bottom: none; }
+  .confirmed-row:hover { background: rgba(107,159,125,0.05); }
+  .confirmed-date { font-weight: 700; font-size: 0.85rem; color: var(--text); min-width: 72px; }
+  .confirmed-time { font-size: 0.72rem; color: var(--text-dim); margin-top: 2px; }
+  .confirmed-kind { font-size: 0.68rem; color: var(--accent); margin-top: 4px; }
+  .confirmed-chips-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .chip { font-size: 0.65rem; padding: 2px 8px; border-radius: 999px; background: var(--bg-elevated); border: 1px solid var(--border); }
+  .cal-subscribe-box {
+    background: rgba(107,159,125,0.06);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+  .cal-url { word-break: break-all; font-size: 0.72rem; margin-top: 8px; color: var(--accent); }
+  .sheet-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    display: none; align-items: flex-end; justify-content: center;
+    z-index: 50; padding: 12px;
+  }
+  .sheet-overlay.open { display: flex; }
+  .sheet {
+    width: 100%; max-width: 480px; max-height: 90dvh; overflow: auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding: 16px;
+  }
+  .sheet h3 { margin: 0 0 12px; font-size: 1rem; color: var(--accent); }
+  .field { margin-bottom: 12px; }
+  .err { color: #c08080; font-size: 0.8rem; margin-top: 8px; }
+  .hidden { display: none !important; }
+  .legend { font-size: 0.72rem; color: var(--text-dim); margin: 12px 0; line-height: 1.5; }
+  @media (max-width: 560px) {
+    .day-row { grid-template-columns: 1fr; }
+    .day-actions-col { text-align: left; }
+  }
+  </style>
+</head>
+<body>
+  <div id="gate" class="screen">
+    <h1>The Green Hunger</h1>
+    <p class="sub">Coordinate availability for the Weald campaign and Arcadia sessions. Enter the shared group secret and your name.</p>
+    <div class="gate-card">
+      <div class="field">
+        <label for="secret">Group secret</label>
+        <input id="secret" type="password" autocomplete="current-password" placeholder="From your DM"/>
+      </div>
+      <div class="field">
+        <label for="playerSel">You are</label>
+        <select id="playerSel"><option value="">Loading…</option></select>
+      </div>
+      <div class="row-actions">
+        <button type="button" class="btn btn-primary" id="btnLogin">Continue</button>
+      </div>
+      <p id="gateErr" class="err" style="display:none;"></p>
+    </div>
+  </div>
+
+  <div id="app" class="screen hidden">
+    <div class="app-header">
+      <div>
+        <h1 style="margin-bottom:2px;">Sessions</h1>
+        <div class="who">Signed in as <strong id="dispName"></strong></div>
+      </div>
+      <button type="button" class="btn btn-ghost" id="btnLogout">Sign out</button>
+    </div>
+
+    <div id="confirmed-wrap"></div>
+
+    <div class="cal-subscribe-box" id="ics-box">
+      <div style="font-weight:600;color:var(--text);margin-bottom:6px;">Calendar feed</div>
+      <div>Subscribe in Apple Calendar or Google Calendar to see confirmed sessions.</div>
+      <div id="ics-url" class="cal-url"></div>
+      <div class="row-actions" style="margin-top:10px;">
+        <button type="button" class="btn btn-ghost" id="btnCopyIcs">Copy feed URL</button>
+        <button type="button" class="btn btn-ghost" id="btnRotateIcs">Rotate link</button>
+      </div>
+    </div>
+
+    <p class="legend">
+      <strong>Available</strong> = can play · <strong>Maybe</strong> = unsure · <strong>Unavailable</strong> = out.
+      <strong>Full table</strong> means everyone is available — ideal for The Green Hunger at home.
+    </p>
+
+    <div class="panel" style="padding:12px;">
+      <div id="dayList"></div>
+    </div>
+  </div>
+
+  <div id="sheet-confirm" class="sheet-overlay" aria-hidden="true">
+    <div class="sheet">
+      <h3 id="confirmTitle">Confirm session</h3>
+      <div id="confirmVoteSummary" class="field" style="font-size:0.8rem;color:var(--text-dim);"></div>
+      <div class="field">
+        <label for="cfKind">Session</label>
+        <select id="cfKind">
+          <option value="green_hunger">The Green Hunger (full party)</option>
+          <option value="arcadia">Arcadia</option>
+        </select>
+      </div>
+      <div class="field" style="display:flex;gap:10px;">
+        <div style="flex:1;">
+          <label for="cfStart">Start</label>
+          <input id="cfStart" type="time" value="18:30"/>
+        </div>
+        <div style="flex:1;">
+          <label for="cfEnd">End</label>
+          <input id="cfEnd" type="time" value="22:00"/>
+        </div>
+      </div>
+      <div class="field">
+        <label for="cfLoc">Location / notes</label>
+        <textarea id="cfLoc" placeholder="Address or 'Online'"></textarea>
+      </div>
+      <div class="field" id="cfAttWrap">
+        <label>Players in this session</label>
+        <div id="cfAtt"></div>
+      </div>
+      <p id="cfErr" class="err" style="display:none;"></p>
+      <div class="row-actions">
+        <button type="button" class="btn btn-ghost" id="cfCancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="cfSave">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="sheet-detail" class="sheet-overlay" aria-hidden="true">
+    <div class="sheet">
+      <h3 id="detTitle">Session</h3>
+      <div id="detBody" style="font-size:0.85rem;color:var(--text-dim);line-height:1.5;"></div>
+      <div class="row-actions" style="margin-top:14px;">
+        <button type="button" class="btn btn-ghost" id="detClose">Close</button>
+        <button type="button" class="btn btn-primary" id="detIcs">Download .ics</button>
+        <button type="button" class="btn btn-ghost" id="detUnbook" style="border-color:#7a5a5a;color:#d4a8a8;">Remove booking</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var APP = { dates: [], players: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, saveT: null };
+
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function api(action, payload) {
+      return fetch('/api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: action, payload: payload || {} })
+      }).then(function(r){ return r.json(); });
+    }
+
+    function showGate() {
+      document.getElementById('gate').classList.remove('hidden');
+      document.getElementById('app').classList.add('hidden');
+    }
+    function showApp() {
+      document.getElementById('gate').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+    }
+
+    function voteClass(v) {
+      if (v === 'available') return 'avail';
+      if (v === 'maybe') return 'maybe';
+      if (v === 'unavailable') return 'nope';
+      return '';
+    }
+    function voteLabel(v) {
+      if (v === 'available') return 'Avail';
+      if (v === 'maybe') return 'Maybe';
+      if (v === 'unavailable') return 'Out';
+      return '—';
+    }
+
+    function renderConfirmed() {
+      var wrap = document.getElementById('confirmed-wrap');
+      var g = APP.confirmedGames || [];
+      var today = new Date().toISOString().slice(0, 10);
+      var upcoming = g.filter(function(c) { return c.date >= today; });
+      if (!upcoming.length) { wrap.innerHTML = ''; return; }
+      var h = '<div class="confirmed-widget"><div class="confirmed-hdr">Confirmed sessions</div>';
+      upcoming.forEach(function(c) {
+        var safeIso = esc(c.date);
+        h += '<div class="confirmed-row" data-iso="' + safeIso + '">' +
+          '<div><div class="confirmed-date">' + esc(c.label) + '</div>' +
+          '<div class="confirmed-time">' + esc(c.sessionTime || '') + '</div>' +
+          '<div class="confirmed-kind">' + esc(c.kindLabel || '') + '</div></div>' +
+          '<div style="flex:1;"><div class="confirmed-chips-row">';
+        (c.attendees || []).forEach(function(a) {
+          h += '<span class="chip">' + esc(a.displayName) + '</span>';
+        });
+        h += '</div></div></div>';
+      });
+      h += '</div>';
+      wrap.innerHTML = h;
+      wrap.querySelectorAll('.confirmed-row').forEach(function(el) {
+        el.addEventListener('click', function() { openDetail(el.getAttribute('data-iso')); });
+      });
+    }
+
+    function findDateEntry(iso) {
+      return (APP.dates || []).find(function(d) { return d.iso === iso; });
+    }
+    function findConfirmed(iso) {
+      return (APP.confirmedGames || []).find(function(c) { return c.date === iso; });
+    }
+
+    function renderDayList() {
+      var el = document.getElementById('dayList');
+      var rows = APP.dates || [];
+      if (!rows.length) {
+        el.innerHTML = '<p class="sub">No dates loaded.</p>';
+        return;
+      }
+      var h = '';
+      rows.forEach(function(d) {
+        var booked = !!findConfirmed(d.iso);
+        var pills = '';
+        (APP.players || []).forEach(function(p) {
+          var v = (d.votes && d.votes[p.id]) || '';
+          var cls = voteClass(v);
+          pills += '<span class="vp ' + cls + '">' + esc(p.displayName) + ': ' + voteLabel(v) + '</span>';
+        });
+        var my = d.myVote || '';
+        var b1 = my === 'available' ? ' on' : '';
+        var b2 = my === 'maybe' ? ' on' : '';
+        var b3 = my === 'unavailable' ? ' on' : '';
+        var ft = d.fullTableOk ? '<span class="badge-ft">Full table</span>' : '';
+        var actions = '';
+        if (booked) {
+          actions = '<button type="button" class="btn btn-ghost js-view" data-iso="' + esc(d.iso) + '">View</button>';
+        } else {
+          actions = '<button type="button" class="btn btn-primary js-book" data-iso="' + esc(d.iso) + '">Book</button>';
+        }
+        h += '<div class="day-row" data-iso="' + esc(d.iso) + '">' +
+          '<div class="day-meta"><strong>' + esc(d.dayLabel) + '</strong>' + esc(d.label) + '</div>' +
+          '<div><div class="vote-pills">' + pills + '</div>' +
+          '<div class="my-vote" style="margin-top:6px;">' +
+          '<span style="font-size:0.65rem;color:var(--text-dim);margin-right:4px;">You:</span>' +
+          '<button type="button" class="js-vote' + b1 + '" data-iso="' + esc(d.iso) + '" data-v="available">Available</button>' +
+          '<button type="button" class="js-vote' + b2 + '" data-iso="' + esc(d.iso) + '" data-v="maybe">Maybe</button>' +
+          '<button type="button" class="js-vote' + b3 + '" data-iso="' + esc(d.iso) + '" data-v="unavailable">Out</button>' +
+          '</div></div>' +
+          '<div class="day-actions-col">' + ft + actions + '</div></div>';
+      });
+      el.innerHTML = h;
+      el.querySelectorAll('.js-vote').forEach(function(btn) {
+        btn.addEventListener('click', function(ev) {
+          ev.stopPropagation();
+          var iso = btn.getAttribute('data-iso');
+          var v = btn.getAttribute('data-v');
+          setMyVote(iso, v);
+        });
+      });
+      el.querySelectorAll('.js-book').forEach(function(btn) {
+        btn.addEventListener('click', function(ev) {
+          ev.stopPropagation();
+          openConfirm(btn.getAttribute('data-iso'));
+        });
+      });
+      el.querySelectorAll('.js-view').forEach(function(btn) {
+        btn.addEventListener('click', function(ev) {
+          ev.stopPropagation();
+          openDetail(btn.getAttribute('data-iso'));
+        });
+      });
+    }
+
+    function setMyVote(iso, v) {
+      var d = findDateEntry(iso);
+      if (!d) return;
+      d.myVote = v;
+      renderDayList();
+      queueSave();
+    }
+
+    function queueSave() {
+      if (APP.saveT) clearTimeout(APP.saveT);
+      APP.saveT = setTimeout(saveVotesNow, 450);
+    }
+
+    function saveVotesNow() {
+      var votes = [];
+      (APP.dates || []).forEach(function(d) {
+        if (d.myVote) votes.push({ date: d.iso, vote: d.myVote });
+      });
+      api('saveVotes', { votes: votes }).then(function(r) {
+        if (!r.ok) { alert(r.error || 'Save failed'); return; }
+        mergeApp(r);
+      });
+    }
+
+    function mergeApp(r) {
+      if (r.dates) APP.dates = r.dates;
+      if (r.confirmedGames) APP.confirmedGames = r.confirmedGames;
+      if (r.players) APP.players = r.players;
+      if (r.fullTableDates) APP.fullTableDates = r.fullTableDates;
+      if (r.arcadiaDefaultLocation) APP.arcadiaDefaultLocation = r.arcadiaDefaultLocation;
+      if (r.me && r.me.displayName) document.getElementById('dispName').textContent = r.me.displayName;
+      renderConfirmed();
+      renderDayList();
+    }
+
+    function loadAppData() {
+      return api('getAppData', {}).then(function(r) {
+        if (!r.ok) { showGate(); return; }
+        mergeApp(r);
+        if (r.me) document.getElementById('dispName').textContent = r.me.displayName || '';
+        loadIcs();
+      });
+    }
+
+    function loadIcs() {
+      api('getCalendarFeedLinks', { origin: window.location.origin }).then(function(r) {
+        var el = document.getElementById('ics-url');
+        if (r.ok && r.url) el.textContent = r.url;
+        else el.textContent = '(could not load — try again after saving availability)';
+      });
+    }
+
+    document.getElementById('btnCopyIcs').addEventListener('click', function() {
+      var t = document.getElementById('ics-url').textContent;
+      if (!t) return;
+      navigator.clipboard.writeText(t).then(function() { alert('Copied'); });
+    });
+    document.getElementById('btnRotateIcs').addEventListener('click', function() {
+      if (!confirm('Rotate the calendar link? Old subscriptions will stop updating.')) return;
+      api('rotateCalendarFeedToken', { origin: window.location.origin }).then(function(r) {
+        if (!r.ok) { alert(r.error || 'Failed'); return; }
+        document.getElementById('ics-url').textContent = r.url || '';
+        alert('New link ready. Re-subscribe in your calendar app.');
+      });
+    });
+
+    function openConfirm(iso) {
+      APP.pendingIso = iso;
+      var d = findDateEntry(iso);
+      if (!d) return;
+      document.getElementById('confirmTitle').textContent = 'Confirm — ' + d.dayLabel + ', ' + d.label;
+      var vs = '';
+      (APP.players || []).forEach(function(p) {
+        var v = (d.votes && d.votes[p.id]) || '';
+        vs += '<div>' + esc(p.displayName) + ': <strong>' + esc(voteLabel(v)) + '</strong></div>';
+      });
+      document.getElementById('confirmVoteSummary').innerHTML = vs;
+      document.getElementById('cfKind').value = 'green_hunger';
+      document.getElementById('cfStart').value = '18:30';
+      document.getElementById('cfEnd').value = '22:00';
+      document.getElementById('cfLoc').value = '';
+      document.getElementById('cfErr').style.display = 'none';
+      syncKindUi();
+      document.getElementById('cfKind').onchange = syncKindUi;
+      document.getElementById('sheet-confirm').classList.add('open');
+      document.getElementById('sheet-confirm').setAttribute('aria-hidden', 'false');
+    }
+
+    function syncKindUi() {
+      var kind = document.getElementById('cfKind').value;
+      var loc = document.getElementById('cfLoc');
+      if (kind === 'arcadia') {
+        if (!loc.value.trim()) loc.value = APP.arcadiaDefaultLocation || 'Arcadia Games, 19 Essex St, London WC2R 3AT';
+      } else {
+        if (!loc.value.trim()) loc.value = 'Online / home';
+      }
+      var att = document.getElementById('cfAtt');
+      var html = '';
+      var isGh = kind === 'green_hunger';
+      (APP.players || []).forEach(function(p) {
+        var d = findDateEntry(APP.pendingIso);
+        var v = d && d.votes ? (d.votes[p.id] || '') : '';
+        var can = (v === 'available' || v === 'maybe');
+        var dis = isGh ? ' disabled' : '';
+        var checked = isGh ? true : can;
+        var chkAttr = checked ? ' checked' : '';
+        html += '<label style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:0.85rem;">' +
+          '<input type="checkbox" class="cf-att-cb" data-id="' + esc(p.id) + '"' + chkAttr + dis + '/> ' +
+          esc(p.displayName) + (can ? '' : ' (not available)') +
+        '</label>';
+      });
+      att.innerHTML = html;
+    }
+
+    document.getElementById('cfCancel').addEventListener('click', function() {
+      document.getElementById('sheet-confirm').classList.remove('open');
+    });
+    document.getElementById('cfSave').addEventListener('click', function() {
+      var iso = APP.pendingIso;
+      var kind = document.getElementById('cfKind').value;
+      var start = document.getElementById('cfStart').value;
+      var end = document.getElementById('cfEnd').value;
+      var loc = document.getElementById('cfLoc').value.trim();
+      var ids = [];
+      document.querySelectorAll('.cf-att-cb').forEach(function(cb) {
+        if (cb.checked) ids.push(cb.getAttribute('data-id'));
+      });
+      var err = document.getElementById('cfErr');
+      err.style.display = 'none';
+      api('confirmSession', {
+        date: iso,
+        kind: kind,
+        startTime: start,
+        endTime: end,
+        location: loc,
+        attendeePlayerIds: ids
+      }).then(function(r) {
+        if (!r.ok) {
+          err.textContent = r.error || 'Could not confirm';
+          err.style.display = 'block';
+          return;
+        }
+        mergeApp(r);
+        document.getElementById('sheet-confirm').classList.remove('open');
+      });
+    });
+
+    var DET_ISO = null;
+    function openDetail(iso) {
+      DET_ISO = iso;
+      var c = findConfirmed(iso);
+      if (!c) return;
+      document.getElementById('detTitle').textContent = c.kindLabel + ' — ' + c.label;
+      var body = (c.sessionTime || '') + '<br/>' + esc(c.location || '(no location)') + '<br/><br/>Players: ';
+      body += (c.attendees || []).map(function(a){ return esc(a.displayName); }).join(', ');
+      document.getElementById('detBody').innerHTML = body;
+      document.getElementById('sheet-detail').classList.add('open');
+    }
+    document.getElementById('detClose').addEventListener('click', function() {
+      document.getElementById('sheet-detail').classList.remove('open');
+    });
+    document.getElementById('detIcs').addEventListener('click', function() {
+      api('getSingleEventCalendarIcs', { date: DET_ISO }).then(function(r) {
+        if (!r.ok || !r.ics) { alert(r.error || 'Failed'); return; }
+        var blob = new Blob([r.ics], { type: 'text/calendar;charset=utf-8' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'session-' + DET_ISO + '.ics';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+    });
+    document.getElementById('detUnbook').addEventListener('click', function() {
+      if (!confirm('Remove this confirmed session?')) return;
+      api('unconfirmSession', { date: DET_ISO }).then(function(r) {
+        if (!r.ok) { alert(r.error || 'Failed'); return; }
+        mergeApp(r);
+        document.getElementById('sheet-detail').classList.remove('open');
+      });
+    });
+
+    document.getElementById('btnLogin').addEventListener('click', function() {
+      var secret = document.getElementById('secret').value;
+      var playerId = document.getElementById('playerSel').value;
+      var ge = document.getElementById('gateErr');
+      ge.style.display = 'none';
+      api('login', { groupSecret: secret, playerId: playerId }).then(function(r) {
+        if (!r.ok) {
+          ge.textContent = r.error || 'Login failed';
+          ge.style.display = 'block';
+          return;
+        }
+        showApp();
+        if (r.me) document.getElementById('dispName').textContent = r.me.displayName || '';
+        loadAppData();
+      });
+    });
+
+    document.getElementById('btnLogout').addEventListener('click', function() {
+      api('logout', {}).then(function() { showGate(); });
+    });
+
+    function boot() {
+      api('authMe', {}).then(function(r) {
+        if (r.ok && r.me) {
+          document.getElementById('dispName').textContent = r.me.displayName || '';
+          showApp();
+          loadAppData();
+        } else {
+          api('getPublicBootstrap', {}).then(function(b) {
+            var sel = document.getElementById('playerSel');
+            sel.innerHTML = '';
+            if (b.ok && b.players) {
+              b.players.forEach(function(p) {
+                var o = document.createElement('option');
+                o.value = p.id;
+                o.textContent = p.displayName;
+                sel.appendChild(o);
+              });
+            } else {
+              sel.innerHTML = '<option value="">No players configured</option>';
+            }
+            showGate();
+          });
+        }
+      });
+    }
+
+    boot();
+  })();
+  </script>
+</body>
+</html>
