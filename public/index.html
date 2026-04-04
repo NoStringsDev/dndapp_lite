@@ -108,6 +108,13 @@
     padding: 10px 0;
     border-bottom: 1px solid rgba(42,56,48,0.6);
   }
+  .day-row.day-is-today {
+    background: rgba(107,159,125,0.07);
+    border-radius: 8px;
+    margin: 2px -8px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
   .day-row:last-child { border-bottom: none; }
   .day-date-col { min-width: 0; }
   .day-num { font-size: 1.55rem; font-weight: 800; line-height: 1; color: var(--text); letter-spacing: -0.03em; }
@@ -176,6 +183,11 @@
     display: none; align-items: flex-end; justify-content: center;
     z-index: 50; padding: 12px;
   }
+  .sheet-overlay.sheet-from-top {
+    align-items: flex-start;
+    padding-top: max(12px, env(safe-area-inset-top, 0px));
+    padding-bottom: 12px;
+  }
   .sheet-overlay.open { display: flex; }
   .sheet {
     width: 100%; max-width: 480px; max-height: 90dvh; overflow: auto;
@@ -184,6 +196,18 @@
     border-radius: var(--radius) var(--radius) 0 0;
     padding: 16px;
   }
+  .sheet-from-top .sheet {
+    border-radius: 0 0 var(--radius) var(--radius);
+    max-height: min(90dvh, calc(100dvh - 24px));
+  }
+  .confirmed-booking-hit {
+    text-align: right; cursor: pointer; max-width: 120px; margin-left: auto;
+    border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px;
+    background: rgba(107,159,125,0.08);
+  }
+  .confirmed-booking-hit .cb-line1 { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); }
+  .confirmed-booking-hit .cb-line2 { font-size: 0.72rem; color: var(--text); margin-top: 2px; line-height: 1.25; }
+  .det-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; align-items: center; }
   .sheet h3 { margin: 0 0 12px; font-size: 1rem; color: var(--accent); }
   .field { margin-bottom: 12px; }
   .err { color: #c08080; font-size: 0.8rem; margin-top: 8px; }
@@ -193,6 +217,7 @@
     .day-actions-col { align-items: stretch; }
     .vote-pills { justify-content: flex-start; }
     .day-actions-btns .btn { max-width: none; }
+    .confirmed-booking-hit { max-width: none; margin-left: 0; align-self: flex-end; }
   }
   </style>
 </head>
@@ -286,12 +311,13 @@
     </div>
   </div>
 
-  <div id="sheet-detail" class="sheet-overlay" aria-hidden="true">
+  <div id="sheet-detail" class="sheet-overlay sheet-from-top" aria-hidden="true">
     <div class="sheet">
       <h3 id="detTitle">Session</h3>
       <div id="detBody" style="font-size:0.85rem;color:var(--text-dim);line-height:1.5;"></div>
-      <div class="row-actions" style="margin-top:14px;">
+      <div class="det-actions">
         <button type="button" class="btn btn-ghost" id="detClose">Close</button>
+        <button type="button" class="btn btn-ghost" id="detEdit">Edit</button>
         <button type="button" class="btn btn-primary" id="detIcs">Download .ics</button>
         <button type="button" class="btn btn-ghost" id="detUnbook" style="border-color:#7a5a5a;color:#d4a8a8;">Remove booking</button>
       </div>
@@ -300,7 +326,7 @@
 
   <script>
   (function(){
-    var APP = { dates: [], players: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, saveT: null, viewMonth: '' };
+    var APP = { dates: [], players: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, saveT: null, viewMonth: '', todayIso: '', hasScrolledToToday: false, editBooking: false, _editSnapshot: null };
 
     function esc(s) {
       return String(s == null ? '' : s)
@@ -355,8 +381,8 @@
       var months = distinctMonths(APP.dates || []);
       if (!months.length) { APP.viewMonth = ''; return; }
       if (!APP.viewMonth || months.indexOf(APP.viewMonth) === -1) {
-        var today = new Date().toISOString().slice(0, 10);
-        var tym = today.slice(0, 7);
+        var todayStr = APP.todayIso || new Date().toISOString().slice(0, 10);
+        var tym = todayStr.slice(0, 7);
         APP.viewMonth = months.indexOf(tym) !== -1 ? tym : months[0];
       }
     }
@@ -392,7 +418,7 @@
     function renderConfirmed() {
       var wrap = document.getElementById('confirmed-wrap');
       var g = APP.confirmedGames || [];
-      var today = new Date().toISOString().slice(0, 10);
+      var today = APP.todayIso || new Date().toISOString().slice(0, 10);
       var upcoming = g.filter(function(c) { return c.date >= today; });
       if (!upcoming.length) { wrap.innerHTML = ''; return; }
       var h = '<div class="confirmed-widget"><div class="confirmed-hdr">Confirmed sessions</div>';
@@ -475,11 +501,16 @@
         var ft = d.fullTableOk ? '<span class="badge-ft">Full table</span>' : '';
         var actions = '';
         if (booked) {
-          actions = '<button type="button" class="btn btn-ghost js-view" data-iso="' + esc(d.iso) + '">View</button>';
+          var bk = findConfirmed(d.iso);
+          var ktext = bk ? esc(bk.kindLabel || '') : '';
+          actions = '<div class="confirmed-booking-hit js-view" data-iso="' + esc(d.iso) + '" role="button" tabindex="0">' +
+            '<div class="cb-line1">Confirmed</div>' +
+            '<div class="cb-line2">' + ktext + '</div></div>';
         } else {
           actions = '<button type="button" class="btn btn-primary js-book" data-iso="' + esc(d.iso) + '">Book</button>';
         }
-        h += '<div class="day-row" data-iso="' + esc(d.iso) + '">' +
+        var isToday = APP.todayIso && d.iso === APP.todayIso;
+        h += '<div class="day-row' + (isToday ? ' day-is-today' : '') + '" data-iso="' + esc(d.iso) + '">' +
           '<div class="day-date-col">' +
             '<div class="day-num">' + esc(dayNum) + '</div>' +
             '<div class="day-sub">' + esc(daySubLine(d)) + '</div>' +
@@ -517,6 +548,12 @@
           ev.stopPropagation();
           openDetail(btn.getAttribute('data-iso'));
         });
+        btn.addEventListener('keydown', function(ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault();
+            openDetail(btn.getAttribute('data-iso'));
+          }
+        });
       });
     }
 
@@ -550,10 +587,20 @@
       if (r.players) APP.players = r.players;
       if (r.fullTableDates) APP.fullTableDates = r.fullTableDates;
       if (r.arcadiaDefaultLocation) APP.arcadiaDefaultLocation = r.arcadiaDefaultLocation;
+      if (r.todayIso) APP.todayIso = r.todayIso;
       if (r.me && r.me.displayName) document.getElementById('dispName').textContent = r.me.displayName;
       ensureViewMonth();
       renderConfirmed();
       renderDayList();
+      if (!APP.hasScrolledToToday && APP.todayIso) {
+        APP.hasScrolledToToday = true;
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            var row = document.querySelector('.day-row[data-iso="' + APP.todayIso + '"]');
+            if (row) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          });
+        });
+      }
     }
 
     function loadAppData() {
@@ -602,7 +649,14 @@
       renderDayList();
     });
 
+    function resetBookingEditorState() {
+      APP.editBooking = false;
+      APP._editSnapshot = null;
+      document.getElementById('cfSave').textContent = 'Confirm';
+    }
+
     function openConfirm(iso) {
+      resetBookingEditorState();
       APP.pendingIso = iso;
       var d = findDateEntry(iso);
       if (!d) return;
@@ -619,27 +673,76 @@
       document.getElementById('cfLoc').value = '';
       document.getElementById('cfErr').style.display = 'none';
       syncKindUi();
-      document.getElementById('cfKind').onchange = syncKindUi;
+      document.getElementById('cfKind').onchange = function() {
+        APP._editSnapshot = null;
+        syncKindUi();
+      };
       document.getElementById('sheet-confirm').classList.add('open');
       document.getElementById('sheet-confirm').setAttribute('aria-hidden', 'false');
     }
 
+    function openBookingEditor(iso) {
+      var c = findConfirmed(iso);
+      if (!c) return;
+      APP.pendingIso = iso;
+      APP.editBooking = true;
+      APP._editSnapshot = c.kind === 'arcadia'
+        ? { arcadiaAttendeeIds: (c.attendees || []).map(function(a) { return a.id; }) }
+        : null;
+      document.getElementById('confirmTitle').textContent = 'Edit session — ' + c.dayLabel + ', ' + c.label;
+      document.getElementById('cfSave').textContent = 'Save changes';
+      var d = findDateEntry(iso);
+      var vs = '';
+      if (d) {
+        (APP.players || []).forEach(function(p) {
+          var v = (d.votes && d.votes[p.id]) || '';
+          vs += '<div>' + esc(p.displayName) + ': <strong>' + esc(voteLabel(v)) + '</strong></div>';
+        });
+      }
+      document.getElementById('confirmVoteSummary').innerHTML = vs;
+      document.getElementById('cfKind').value = c.kind;
+      document.getElementById('cfStart').value = c.startTime || '18:30';
+      document.getElementById('cfEnd').value = c.endTime || '22:00';
+      document.getElementById('cfLoc').value = c.location || '';
+      document.getElementById('cfErr').style.display = 'none';
+      syncKindUi();
+      document.getElementById('cfKind').onchange = function() {
+        APP._editSnapshot = null;
+        syncKindUi();
+      };
+      document.getElementById('sheet-detail').classList.remove('open');
+      document.getElementById('sheet-confirm').classList.add('open');
+      document.getElementById('sheet-confirm').setAttribute('aria-hidden', 'false');
+    }
+
+    var GH_LOC_DEFAULT = 'Online / home';
+
     function syncKindUi() {
       var kind = document.getElementById('cfKind').value;
       var loc = document.getElementById('cfLoc');
+      var v = loc.value.trim();
+      var arc = (APP.arcadiaDefaultLocation || '').trim();
       if (kind === 'arcadia') {
-        if (!loc.value.trim()) loc.value = APP.arcadiaDefaultLocation || '';
+        if (!v || v === GH_LOC_DEFAULT) loc.value = arc;
       } else {
-        if (!loc.value.trim()) loc.value = 'Online / home';
+        if (!v || (arc && v === arc)) loc.value = GH_LOC_DEFAULT;
       }
       var att = document.getElementById('cfAtt');
       var html = '';
       var isGh = kind === 'green_hunger';
+      var snap = APP._editSnapshot;
       (APP.players || []).forEach(function(p) {
         var d = findDateEntry(APP.pendingIso);
-        var v = d && d.votes ? (d.votes[p.id] || '') : '';
+        var vv = d && d.votes ? (d.votes[p.id] || '') : '';
         var dis = isGh ? ' disabled' : '';
-        var checked = isGh ? true : (v === 'available' || v === 'maybe');
+        var checked;
+        if (isGh) {
+          checked = true;
+        } else if (snap && snap.arcadiaAttendeeIds) {
+          checked = snap.arcadiaAttendeeIds.indexOf(p.id) !== -1;
+        } else {
+          checked = (vv === 'available' || vv === 'maybe');
+        }
         var chkAttr = checked ? ' checked' : '';
         html += '<label style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:0.85rem;">' +
           '<input type="checkbox" class="cf-att-cb" data-id="' + esc(p.id) + '"' + chkAttr + dis + '/> ' +
@@ -650,6 +753,7 @@
     }
 
     document.getElementById('cfCancel').addEventListener('click', function() {
+      resetBookingEditorState();
       document.getElementById('sheet-confirm').classList.remove('open');
     });
     document.getElementById('cfSave').addEventListener('click', function() {
@@ -670,19 +774,22 @@
           '\n\nBook this session anyway?';
         if (!window.confirm(msg)) return;
       }
-      api('confirmSession', {
+      var payload = {
         date: iso,
         kind: kind,
         startTime: start,
         endTime: end,
         location: loc,
         attendeePlayerIds: ids
-      }).then(function(r) {
+      };
+      if (APP.editBooking) payload.replaceExisting = true;
+      api('confirmSession', payload).then(function(r) {
         if (!r.ok) {
           err.textContent = r.error || 'Could not confirm';
           err.style.display = 'block';
           return;
         }
+        resetBookingEditorState();
         mergeApp(r);
         document.getElementById('sheet-confirm').classList.remove('open');
       });
@@ -701,6 +808,9 @@
     }
     document.getElementById('detClose').addEventListener('click', function() {
       document.getElementById('sheet-detail').classList.remove('open');
+    });
+    document.getElementById('detEdit').addEventListener('click', function() {
+      if (DET_ISO) openBookingEditor(DET_ISO);
     });
     document.getElementById('detIcs').addEventListener('click', function() {
       api('getSingleEventCalendarIcs', { date: DET_ISO }).then(function(r) {
@@ -740,6 +850,9 @@
     });
 
     document.getElementById('btnLogout').addEventListener('click', function() {
+      APP.viewMonth = '';
+      APP.todayIso = '';
+      APP.hasScrolledToToday = false;
       api('logout', {}).then(function() { showGate(); });
     });
 

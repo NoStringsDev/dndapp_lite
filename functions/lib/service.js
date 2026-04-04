@@ -5,7 +5,8 @@
 import { generateSessionId } from './auth.js';
 
 const TZ = 'Europe/London';
-const ROLLING_DAYS = 84; // 12 weeks
+const ROLLING_DAYS = 84; // 12 weeks ahead
+const ROLLING_PAST_DAYS = 84; // 12 weeks back — votes/bookings stay in D1; UI includes this window
 const SESSION_TTL_HOURS = 24 * 14; // 14 days
 
 const ICS_PRODID = '-//dndapp_lite//Calendar//EN';
@@ -42,11 +43,13 @@ function addDaysLondon(iso, n) {
   return isoDateInTimeZone(dt, TZ);
 }
 
-/** Next `count` calendar days starting from today in Europe/London */
-export function rollingDateIsos(count = ROLLING_DAYS) {
-  const start = isoDateInTimeZone(new Date(), TZ);
+/** Calendar day range in Europe/London: past ROLLING_PAST_DAYS through future ROLLING_DAYS-1 from today */
+export function rollingDateIsos() {
+  const today = isoDateInTimeZone(new Date(), TZ);
   const out = [];
-  for (let i = 0; i < count; i++) out.push(addDaysLondon(start, i));
+  for (let i = -ROLLING_PAST_DAYS; i < ROLLING_DAYS; i++) {
+    out.push(addDaysLondon(today, i));
+  }
   return out;
 }
 
@@ -201,7 +204,8 @@ async function buildAppPayload(repo, playerId) {
   }
 
   const today = isoDateInTimeZone(new Date(), TZ);
-  const bookings = await repo.listBookingsFrom(today);
+  const rangeStart = addDaysLondon(today, -ROLLING_PAST_DAYS);
+  const bookings = await repo.listBookingsFrom(rangeStart);
   const nameById = Object.fromEntries(players.map(p => [p.id, p.displayName]));
   const me = await repo.getPlayerById(playerId);
 
@@ -234,6 +238,7 @@ async function buildAppPayload(repo, playerId) {
     fullTableDates,
     confirmedGames,
     timezone: TZ,
+    todayIso: today,
     defaultStart: '18:30',
     defaultEnd: '22:00',
     arcadiaDefaultLocation: 'Arcadia Games, 46 Essex St, Temple, London WC2R 3JF',
@@ -296,7 +301,13 @@ export async function confirmSession(payload, repo) {
     const activeIds = players.map(p => p.id);
 
     const existing = await repo.getBooking(date);
-    if (existing) return { ok: false, error: 'That date already has a confirmed session.' };
+    const replaceExisting = Boolean(payload?.replaceExisting);
+    if (existing && !replaceExisting) {
+      return { ok: false, error: 'That date already has a confirmed session.' };
+    }
+    if (!existing && replaceExisting) {
+      return { ok: false, error: 'No booking to update on that date.' };
+    }
 
     if (kind === 'green_hunger') {
       attendeeIds = [...activeIds];
@@ -305,6 +316,10 @@ export async function confirmSession(payload, repo) {
       if (attendeeIds.length < 1) return { ok: false, error: 'Pick at least one player for Arcadia.' };
     }
 
+    const createdAt = existing && replaceExisting ? existing.createdAt : new Date().toISOString();
+    const createdByPlayerId =
+      existing && replaceExisting ? (existing.createdByPlayerId || playerId) : playerId;
+
     await repo.upsertBooking({
       date,
       kind,
@@ -312,8 +327,8 @@ export async function confirmSession(payload, repo) {
       endTime,
       location,
       attendeePlayerIds: attendeeIds,
-      createdAt: new Date().toISOString(),
-      createdByPlayerId: playerId,
+      createdAt,
+      createdByPlayerId,
     });
 
     const data = await buildAppPayload(repo, playerId);
