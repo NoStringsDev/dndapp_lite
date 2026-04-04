@@ -132,9 +132,11 @@
     padding-right: 8px;
   }
   .day-row:last-child { border-bottom: none; }
-  .day-date-col { min-width: 0; }
+  .day-date-col { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .day-week { font-size: 0.72rem; color: var(--text-dim); line-height: 1.2; }
+  .day-date-main { display: flex; align-items: baseline; gap: 7px; }
   .day-num { font-size: 1.55rem; font-weight: 800; line-height: 1; color: var(--text); letter-spacing: -0.03em; }
-  .day-sub { font-size: 0.72rem; color: var(--text-dim); margin-top: 5px; line-height: 1.25; }
+  .day-month { font-size: 1.02rem; font-weight: 800; line-height: 1; color: var(--text); letter-spacing: -0.02em; }
   .day-my-col { min-width: 0; }
   .vote-pills-wrap {
     width: 100%;
@@ -293,8 +295,8 @@
     .my-vote { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .my-vote button { width: 100%; min-width: 0; }
     .day-actions-col { gap: 10px; }
-    .day-actions-btns { order: 1; align-items: stretch; gap: 8px; }
-    .vote-pills-wrap { order: 2; align-items: flex-start; }
+    .vote-pills-wrap { order: 1; align-items: flex-start; }
+    .day-actions-btns { order: 2; align-items: stretch; gap: 8px; }
     .vote-pills { justify-content: flex-start; }
     .day-actions-btns .btn { max-width: none; }
     .confirmed-booking-hit { max-width: none; width: 100%; margin-left: 0; align-self: stretch; text-align: left; }
@@ -473,10 +475,10 @@
       }
     }
 
-    function daySubLine(d) {
-      var parts = String(d.label || '').trim().split(/\s+/);
-      var mon = parts.length > 1 ? parts[1] : '';
-      return mon + ' · ' + (d.dayLabel || '');
+    function monthNameFromIso(iso) {
+      var mo = parseInt(String(iso || '').slice(5, 7), 10) - 1;
+      var names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      return names[mo] || '';
     }
 
     function voteIsNonIdeal(v) {
@@ -572,12 +574,16 @@
         updateMonthNav();
         return;
       }
+      var playersByName = (APP.players || []).slice().sort(function(a, z) {
+        return String(a.displayName || '').localeCompare(String(z.displayName || ''), undefined, { sensitivity: 'base' });
+      });
       var h = '';
       rows.forEach(function(d) {
         var booked = !!findConfirmed(d.iso);
         var dayNum = String(parseInt(d.iso.slice(8, 10), 10));
+        var dayMonth = monthNameFromIso(d.iso);
         var pills = '';
-        (APP.players || []).forEach(function(p) {
+        playersByName.forEach(function(p) {
           var v = (d.votes && d.votes[p.id]) || '';
           var cls = voteClass(v);
           pills += '<span class="vp ' + cls + '">' + esc(p.displayName) + ': ' + voteLabel(v) + '</span>';
@@ -600,8 +606,8 @@
         var isToday = APP.todayIso && d.iso === APP.todayIso;
         h += '<div class="day-row' + (isToday ? ' day-is-today' : '') + '" data-iso="' + esc(d.iso) + '">' +
           '<div class="day-date-col">' +
-            '<div class="day-num">' + esc(dayNum) + '</div>' +
-            '<div class="day-sub">' + esc(daySubLine(d)) + '</div>' +
+            '<div class="day-week">' + esc(d.dayLabel || '') + '</div>' +
+            '<div class="day-date-main"><div class="day-num">' + esc(dayNum) + '</div><div class="day-month">' + esc(dayMonth) + '</div></div>' +
           '</div>' +
           '<div class="day-my-col">' +
           '<div class="my-vote-label">Your vote</div>' +
