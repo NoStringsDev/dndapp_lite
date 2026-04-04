@@ -136,21 +136,77 @@
   .day-num { font-size: 1.55rem; font-weight: 800; line-height: 1; color: var(--text); letter-spacing: -0.03em; }
   .day-sub { font-size: 0.72rem; color: var(--text-dim); margin-top: 5px; line-height: 1.25; }
   .day-my-col { min-width: 0; }
+  .vote-pills-wrap {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(42,56,48,0.7);
+    background: rgba(24,35,29,0.45);
+  }
+  .vote-pills-label {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #7f9087;
+    font-weight: 700;
+  }
   .vote-pills { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; justify-content: flex-end; }
-  .vp { font-size: 0.65rem; padding: 2px 6px; border-radius: 999px; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-dim); }
+  .vp { font-size: 0.64rem; padding: 2px 6px; border-radius: 999px; background: rgba(16,24,20,0.92); border: 1px solid #304239; color: #a9baaf; }
   .vp.avail { border-color: var(--avail); color: #b8dcc4; }
   .vp.maybe { border-color: var(--maybe); color: #e8d9b8; }
   .vp.nope { border-color: var(--nay); color: #d4b8b8; }
-  .my-vote { display: flex; gap: 4px; flex-wrap: wrap; }
-  .my-vote button {
-    font-size: 0.68rem; padding: 4px 8px; border-radius: 6px;
-    border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text-dim); cursor: pointer;
+  .my-vote-label {
+    font-size: 0.68rem;
+    color: #9db0a4;
+    margin-bottom: 6px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
   }
-  .my-vote button.on { border-color: var(--accent); color: var(--accent); background: rgba(107,159,125,0.12); }
+  .my-vote { display: flex; gap: 8px; flex-wrap: wrap; }
+  .my-vote button {
+    min-height: 42px;
+    min-width: 72px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: 1px solid #3a4f42;
+    background: #111a16;
+    color: #9fb0a6;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+  }
+  .my-vote button:focus-visible {
+    outline: 2px solid rgba(107,159,125,0.55);
+    outline-offset: 1px;
+  }
+  .my-vote button.vote-yes.on {
+    border-color: #7ec996;
+    color: #072214;
+    background: linear-gradient(180deg, #8ddba7 0%, #66b883 100%);
+    box-shadow: 0 0 0 1px rgba(125, 196, 153, 0.25);
+  }
+  .my-vote button.vote-maybe.on {
+    border-color: #d9b168;
+    color: #22180a;
+    background: linear-gradient(180deg, #eac680 0%, #c99849 100%);
+    box-shadow: 0 0 0 1px rgba(217, 177, 104, 0.22);
+  }
+  .my-vote button.vote-no.on {
+    border-color: #d38c8c;
+    color: #261212;
+    background: linear-gradient(180deg, #dd9a9a 0%, #c76f6f 100%);
+    box-shadow: 0 0 0 1px rgba(211, 140, 140, 0.22);
+  }
   .badge-ft { font-size: 0.62rem; padding: 2px 8px; border-radius: 999px; background: rgba(107,159,125,0.2); color: var(--accent); font-weight: 700; }
   .day-actions-col { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 0; }
   .day-actions-btns { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; width: 100%; }
-  .day-actions-btns .btn { width: 100%; max-width: 120px; font-size: 0.72rem; padding: 6px 8px; }
+  .day-actions-btns .btn { width: 100%; max-width: 140px; min-height: 42px; font-size: 0.86rem; padding: 9px 10px; }
   .month-nav .btn { padding: 6px 12px; font-size: 0.85rem; }
   .cal-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 12px; justify-content: space-between; }
   .cal-controls label { margin: 0; text-transform: none; letter-spacing: normal; font-size: 0.78rem; color: var(--text-dim); display: flex; align-items: center; gap: 8px; cursor: pointer; }
@@ -217,9 +273,11 @@
     max-height: min(90dvh, calc(100dvh - 24px));
   }
   .confirmed-booking-hit {
-    text-align: right; cursor: pointer; max-width: 120px; margin-left: auto;
+    text-align: right; cursor: pointer; max-width: 140px; margin-left: auto;
     border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px;
     background: rgba(107,159,125,0.08);
+    min-height: 44px;
+    touch-action: manipulation;
   }
   .confirmed-booking-hit .cb-line1 { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); }
   .confirmed-booking-hit .cb-line2 { font-size: 0.72rem; color: var(--text); margin-top: 2px; line-height: 1.25; }
@@ -231,9 +289,15 @@
   @media (max-width: 560px) {
     .day-row { grid-template-columns: 1fr; }
     .day-actions-col { align-items: stretch; }
+    .day-row { gap: 10px; padding: 14px 0; }
+    .my-vote { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .my-vote button { width: 100%; min-width: 0; }
+    .day-actions-col { gap: 10px; }
+    .day-actions-btns { order: 1; align-items: stretch; gap: 8px; }
+    .vote-pills-wrap { order: 2; align-items: flex-start; }
     .vote-pills { justify-content: flex-start; }
     .day-actions-btns .btn { max-width: none; }
-    .confirmed-booking-hit { max-width: none; margin-left: 0; align-self: flex-end; }
+    .confirmed-booking-hit { max-width: none; width: 100%; margin-left: 0; align-self: stretch; text-align: left; }
   }
   </style>
 </head>
@@ -540,14 +604,14 @@
             '<div class="day-sub">' + esc(daySubLine(d)) + '</div>' +
           '</div>' +
           '<div class="day-my-col">' +
+          '<div class="my-vote-label">Your vote</div>' +
           '<div class="my-vote">' +
-          '<span style="font-size:0.65rem;color:var(--text-dim);margin-right:4px;">You:</span>' +
-          '<button type="button" class="js-vote' + b1 + '" data-iso="' + esc(d.iso) + '" data-v="available">Yes</button>' +
-          '<button type="button" class="js-vote' + b2 + '" data-iso="' + esc(d.iso) + '" data-v="maybe">Maybe</button>' +
-          '<button type="button" class="js-vote' + b3 + '" data-iso="' + esc(d.iso) + '" data-v="unavailable">No</button>' +
+          '<button type="button" class="js-vote vote-yes' + b1 + '" data-iso="' + esc(d.iso) + '" data-v="available">Yes</button>' +
+          '<button type="button" class="js-vote vote-maybe' + b2 + '" data-iso="' + esc(d.iso) + '" data-v="maybe">Maybe</button>' +
+          '<button type="button" class="js-vote vote-no' + b3 + '" data-iso="' + esc(d.iso) + '" data-v="unavailable">No</button>' +
           '</div></div>' +
           '<div class="day-actions-col">' +
-            '<div class="vote-pills">' + pills + '</div>' +
+            '<div class="vote-pills-wrap"><div class="vote-pills-label">Party votes</div><div class="vote-pills">' + pills + '</div></div>' +
             '<div class="day-actions-btns">' + ft + actions + '</div>' +
           '</div></div>';
       });
