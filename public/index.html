@@ -326,7 +326,10 @@
 
   <script>
   (function(){
-    var APP = { dates: [], players: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, saveT: null, viewMonth: '', todayIso: '', hasScrolledToToday: false, editBooking: false, _editSnapshot: null };
+    var APP = { dates: [], players: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, saveT: null, viewMonth: '', todayIso: '', hasScrolledToToday: false, editBooking: false, _editSnapshot: null, initialLoadPending: false };
+
+    /** True after successful login this page load; avoids boot()'s stale authMe failing later and calling showGate(). */
+    var loginWonRace = false;
 
     function esc(s) {
       return String(s == null ? '' : s)
@@ -470,7 +473,9 @@
       var el = document.getElementById('dayList');
       var all = APP.dates || [];
       if (!all.length) {
-        el.innerHTML = '<p class="sub">No dates loaded.</p>';
+        el.innerHTML = APP.initialLoadPending
+          ? '<p class="sub">Loading calendar…</p>'
+          : '<p class="sub">No dates loaded.</p>';
         updateMonthNav();
         return;
       }
@@ -604,11 +609,17 @@
     }
 
     function loadAppData() {
+      APP.initialLoadPending = true;
+      renderDayList();
       return api('getAppData', {}).then(function(r) {
+        APP.initialLoadPending = false;
         if (!r.ok) { showGate(); return; }
         mergeApp(r);
         if (r.me) document.getElementById('dispName').textContent = r.me.displayName || '';
         loadIcs();
+      }).catch(function() {
+        APP.initialLoadPending = false;
+        showGate();
       });
     }
 
@@ -843,6 +854,7 @@
           ge.style.display = 'block';
           return;
         }
+        loginWonRace = true;
         showApp();
         if (r.me) document.getElementById('dispName').textContent = r.me.displayName || '';
         loadAppData();
@@ -859,11 +871,13 @@
     function boot() {
       api('authMe', {}).then(function(r) {
         if (r.ok && r.me) {
+          loginWonRace = true;
           document.getElementById('dispName').textContent = r.me.displayName || '';
           showApp();
           loadAppData();
-        } else {
+        } else if (!loginWonRace) {
           api('getPublicBootstrap', {}).then(function(b) {
+            if (loginWonRace) return;
             var sel = document.getElementById('playerSel');
             sel.innerHTML = '';
             if (b.ok && b.players) {
