@@ -8,7 +8,7 @@ Target: **Cloudflare Pages** with **D1** and one **secret** (`GROUP_SECRET`).
 npm run db:create
 ```
 
-Copy the database id into `wrangler.toml` as `database_id` for `dndapp-lite-db`.
+Copy the database id into `wrangler.toml` as `database_id` for `dndapp-lite-db`. You can print it anytime with `npm run db:info` (after `wrangler login`). **Git-based Pages deploys read this file**—if `database_id` is still the placeholder UUID, the build fails with **Error 8000022 / Invalid database UUID**.
 
 ## 2. Apply schema (remote)
 

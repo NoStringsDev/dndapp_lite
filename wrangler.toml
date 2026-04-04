@@ -2,12 +2,13 @@ name                   = "dndapp-lite"
 compatibility_date     = "2024-09-23"
 pages_build_output_dir = "public"
 
+# D1: must be your real database UUID (not the Miniflare placeholder).
+# Error 8000022 on deploy means this value is wrong or still a placeholder.
+# Get it: Cloudflare dashboard → Storage → D1 → dndapp-lite-db → Database ID,
+# or locally (after wrangler login): npm run db:info
 [[d1_databases]]
 binding           = "DB"
 database_name     = "dndapp-lite-db"
-# Replace with output of: npx wrangler d1 create dndapp-lite-db
-# Replace with your real id from: npx wrangler d1 create dndapp-lite-db
-database_id       = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-preview_database_id = "DB"
+database_id       = "6cf30f37-0255-41d8-9448-10892a471a31"
 
 # GROUP_SECRET — set in Cloudflare Pages → Settings → Environment variables (secret)
