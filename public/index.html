@@ -98,6 +98,22 @@
   .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
   .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
   .row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .player-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+  .player-choice {
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text-dim);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .player-choice.on {
+    border-color: var(--accent);
+    background: rgba(107,159,125,0.12);
+    color: var(--accent);
+    font-weight: 600;
+  }
   .app-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
   .who { font-size: 0.8rem; color: var(--text-dim); }
   .day-row {
@@ -230,8 +246,11 @@
         <input id="secret" type="password" autocomplete="current-password" placeholder="From your DM"/>
       </div>
       <div class="field">
-        <label for="playerSel">You are</label>
-        <select id="playerSel"><option value="">Loading…</option></select>
+        <label>You are</label>
+        <div id="playerPicker" class="player-picker" aria-label="Select your player">
+          <span style="font-size:0.85rem;color:var(--text-dim);">Loading…</span>
+        </div>
+        <input id="playerSel" type="hidden" value=""/>
       </div>
       <div class="row-actions">
         <button type="button" class="btn btn-primary" id="btnLogin">Continue</button>
@@ -565,6 +584,17 @@
       queueSave();
     }
 
+    function setSelectedPlayer(playerId) {
+      var hidden = document.getElementById('playerSel');
+      hidden.value = playerId || '';
+      document.querySelectorAll('.player-choice').forEach(function(btn) {
+        var active = btn.getAttribute('data-id') === hidden.value;
+        if (active) btn.classList.add('on');
+        else btn.classList.remove('on');
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    }
+
     function queueSave() {
       if (APP.saveT) clearTimeout(APP.saveT);
       APP.saveT = setTimeout(saveVotesNow, 450);
@@ -864,17 +894,28 @@
           loadAppData();
         } else {
           api('getPublicBootstrap', {}).then(function(b) {
-            var sel = document.getElementById('playerSel');
-            sel.innerHTML = '';
+            var picker = document.getElementById('playerPicker');
             if (b.ok && b.players) {
-              b.players.forEach(function(p) {
-                var o = document.createElement('option');
-                o.value = p.id;
-                o.textContent = p.displayName;
-                sel.appendChild(o);
+              var sortedPlayers = b.players.slice().sort(function(a, z) {
+                return String(a.displayName || '').localeCompare(String(z.displayName || ''), undefined, { sensitivity: 'base' });
               });
+              picker.innerHTML = '';
+              sortedPlayers.forEach(function(p) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'player-choice';
+                btn.textContent = p.displayName;
+                btn.setAttribute('data-id', p.id);
+                btn.setAttribute('aria-pressed', 'false');
+                btn.addEventListener('click', function() {
+                  setSelectedPlayer(p.id);
+                });
+                picker.appendChild(btn);
+              });
+              setSelectedPlayer(sortedPlayers[0] ? sortedPlayers[0].id : '');
             } else {
-              sel.innerHTML = '<option value="">No players configured</option>';
+              picker.innerHTML = '<span style="font-size:0.85rem;color:var(--text-dim);">No players configured</span>';
+              setSelectedPlayer('');
             }
             var sw = document.getElementById('secretWrap');
             var needSecret = !!(b.ok && b.requiresGroupSecret);
