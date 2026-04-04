@@ -236,7 +236,7 @@ async function buildAppPayload(repo, playerId) {
     timezone: TZ,
     defaultStart: '18:30',
     defaultEnd: '22:00',
-    arcadiaDefaultLocation: 'Arcadia Games, 19 Essex St, London WC2R 3AT',
+    arcadiaDefaultLocation: 'Arcadia Games, 46 Essex St, Temple, London WC2R 3JF',
   };
 }
 
@@ -278,10 +278,6 @@ export async function saveVotes(payload, repo) {
   }
 }
 
-function voteAllowsArcadiaAttendee(v) {
-  return v === 'available' || v === 'maybe';
-}
-
 export async function confirmSession(payload, repo) {
   try {
     const playerId = String(payload?.playerId || '').trim();
@@ -298,27 +294,15 @@ export async function confirmSession(payload, repo) {
 
     const players = await repo.listActivePlayers();
     const activeIds = players.map(p => p.id);
-    const votesForDate = await repo.getAllVotesForDates([date]);
-    const vRow = votesForDate[date] || {};
 
     const existing = await repo.getBooking(date);
     if (existing) return { ok: false, error: 'That date already has a confirmed session.' };
 
     if (kind === 'green_hunger') {
       attendeeIds = [...activeIds];
-      for (const id of activeIds) {
-        if ((vRow[id] || '') !== 'available') {
-          return { ok: false, error: 'The Green Hunger needs everyone available on this date.' };
-        }
-      }
     } else {
       attendeeIds = attendeeIds.filter(id => activeIds.includes(id));
       if (attendeeIds.length < 1) return { ok: false, error: 'Pick at least one player for Arcadia.' };
-      for (const id of attendeeIds) {
-        if (!voteAllowsArcadiaAttendee(vRow[id] || '')) {
-          return { ok: false, error: `Player cannot be booked: adjust availability or pick another player (${id}).` };
-        }
-      }
     }
 
     await repo.upsertBooking({

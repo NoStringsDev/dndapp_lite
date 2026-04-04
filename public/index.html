@@ -102,16 +102,18 @@
   .who { font-size: 0.8rem; color: var(--text-dim); }
   .day-row {
     display: grid;
-    grid-template-columns: 88px 1fr auto;
+    grid-template-columns: 52px 1fr minmax(108px, 38%);
     gap: 8px 10px;
     align-items: start;
     padding: 10px 0;
     border-bottom: 1px solid rgba(42,56,48,0.6);
   }
   .day-row:last-child { border-bottom: none; }
-  .day-meta { font-size: 0.78rem; color: var(--text-dim); line-height: 1.3; }
-  .day-meta strong { display: block; color: var(--text); font-size: 0.9rem; }
-  .vote-pills { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .day-date-col { min-width: 0; }
+  .day-num { font-size: 1.55rem; font-weight: 800; line-height: 1; color: var(--text); letter-spacing: -0.03em; }
+  .day-sub { font-size: 0.72rem; color: var(--text-dim); margin-top: 5px; line-height: 1.25; }
+  .day-my-col { min-width: 0; }
+  .vote-pills { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; justify-content: flex-end; }
   .vp { font-size: 0.65rem; padding: 2px 6px; border-radius: 999px; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-dim); }
   .vp.avail { border-color: var(--avail); color: #b8dcc4; }
   .vp.maybe { border-color: var(--maybe); color: #e8d9b8; }
@@ -123,8 +125,12 @@
   }
   .my-vote button.on { border-color: var(--accent); color: var(--accent); background: rgba(107,159,125,0.12); }
   .badge-ft { font-size: 0.62rem; padding: 2px 8px; border-radius: 999px; background: rgba(107,159,125,0.2); color: var(--accent); font-weight: 700; }
-  .day-actions-col { text-align: right; min-width: 92px; }
-  .day-actions-col .btn { width: 100%; margin-top: 4px; font-size: 0.72rem; padding: 6px 8px; }
+  .day-actions-col { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 0; }
+  .day-actions-btns { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; width: 100%; }
+  .day-actions-btns .btn { width: 100%; max-width: 120px; font-size: 0.72rem; padding: 6px 8px; }
+  .month-nav .btn { padding: 6px 12px; font-size: 0.85rem; }
+  .cal-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 12px; justify-content: space-between; }
+  .cal-controls label { margin: 0; text-transform: none; letter-spacing: normal; font-size: 0.78rem; color: var(--text-dim); display: flex; align-items: center; gap: 8px; cursor: pointer; }
   .confirmed-widget {
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -182,17 +188,17 @@
   .field { margin-bottom: 12px; }
   .err { color: #c08080; font-size: 0.8rem; margin-top: 8px; }
   .hidden { display: none !important; }
-  .legend { font-size: 0.72rem; color: var(--text-dim); margin: 12px 0; line-height: 1.5; }
   @media (max-width: 560px) {
     .day-row { grid-template-columns: 1fr; }
-    .day-actions-col { text-align: left; }
+    .day-actions-col { align-items: stretch; }
+    .vote-pills { justify-content: flex-start; }
+    .day-actions-btns .btn { max-width: none; }
   }
   </style>
 </head>
 <body>
   <div id="gate" class="screen">
-    <h1>The Green Hunger</h1>
-    <p class="sub" id="gateSub">Coordinate availability for the Weald campaign and Arcadia sessions. Pick your name to continue.</p>
+    <h1 style="margin-bottom:12px;">The Green Hunger</h1>
     <div class="gate-card">
       <div class="field hidden" id="secretWrap">
         <label for="secret">Group secret</label>
@@ -230,12 +236,15 @@
       </div>
     </div>
 
-    <p class="legend">
-      <strong>Available</strong> = can play · <strong>Maybe</strong> = unsure · <strong>Unavailable</strong> = out.
-      <strong>Full table</strong> means everyone is available — ideal for The Green Hunger at home.
-    </p>
-
     <div class="panel" style="padding:12px;">
+      <div class="cal-controls">
+        <div class="month-nav" style="display:flex;align-items:center;gap:8px;">
+          <button type="button" class="btn btn-ghost" id="btnMonthPrev" aria-label="Previous month">◀</button>
+          <span id="monthLabel" style="font-weight:600;min-width:150px;text-align:center;font-size:0.9rem;"></span>
+          <button type="button" class="btn btn-ghost" id="btnMonthNext" aria-label="Next month">▶</button>
+        </div>
+        <label><input type="checkbox" id="filterMissingVote"/> Only days I haven’t voted on</label>
+      </div>
       <div id="dayList"></div>
     </div>
   </div>
@@ -291,7 +300,7 @@
 
   <script>
   (function(){
-    var APP = { dates: [], players: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, saveT: null };
+    var APP = { dates: [], players: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, saveT: null, viewMonth: '' };
 
     function esc(s) {
       return String(s == null ? '' : s)
@@ -323,10 +332,61 @@
       return '';
     }
     function voteLabel(v) {
-      if (v === 'available') return 'Avail';
+      if (v === 'available') return 'Yes';
       if (v === 'maybe') return 'Maybe';
-      if (v === 'unavailable') return 'Out';
+      if (v === 'unavailable') return 'No';
       return '—';
+    }
+
+    function distinctMonths(dates) {
+      var m = {};
+      (dates || []).forEach(function(d) { m[d.iso.slice(0, 7)] = true; });
+      return Object.keys(m).sort();
+    }
+
+    function monthTitle(ym) {
+      var parts = ym.split('-');
+      var mo = parseInt(parts[1], 10) - 1;
+      var names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      return names[mo] + ' ' + parts[0];
+    }
+
+    function ensureViewMonth() {
+      var months = distinctMonths(APP.dates || []);
+      if (!months.length) { APP.viewMonth = ''; return; }
+      if (!APP.viewMonth || months.indexOf(APP.viewMonth) === -1) {
+        var today = new Date().toISOString().slice(0, 10);
+        var tym = today.slice(0, 7);
+        APP.viewMonth = months.indexOf(tym) !== -1 ? tym : months[0];
+      }
+    }
+
+    function daySubLine(d) {
+      var parts = String(d.label || '').trim().split(/\s+/);
+      var mon = parts.length > 1 ? parts[1] : '';
+      return mon + ' · ' + (d.dayLabel || '');
+    }
+
+    function voteIsNonIdeal(v) {
+      return v === '' || v === 'maybe' || v === 'unavailable';
+    }
+
+    function collectBookingWarnings(kind, iso, attendeeIds) {
+      var d = findDateEntry(iso);
+      if (!d || !d.votes) return [];
+      var warns = [];
+      var ids = kind === 'green_hunger'
+        ? (APP.players || []).map(function(p) { return p.id; })
+        : attendeeIds.slice();
+      ids.forEach(function(id) {
+        var v = d.votes[id] || '';
+        if (voteIsNonIdeal(v)) {
+          var p = (APP.players || []).find(function(x) { return x.id === id; });
+          var name = p ? p.displayName : id;
+          warns.push(name + ': ' + voteLabel(v));
+        }
+      });
+      return warns;
     }
 
     function renderConfirmed() {
@@ -362,16 +422,46 @@
       return (APP.confirmedGames || []).find(function(c) { return c.date === iso; });
     }
 
+    function updateMonthNav() {
+      var months = distinctMonths(APP.dates || []);
+      var label = document.getElementById('monthLabel');
+      var prev = document.getElementById('btnMonthPrev');
+      var next = document.getElementById('btnMonthNext');
+      if (!label || !prev || !next) return;
+      if (!APP.viewMonth || !months.length) {
+        label.textContent = '';
+        prev.disabled = true;
+        next.disabled = true;
+        return;
+      }
+      label.textContent = monthTitle(APP.viewMonth);
+      var idx = months.indexOf(APP.viewMonth);
+      prev.disabled = idx <= 0;
+      next.disabled = idx < 0 || idx >= months.length - 1;
+    }
+
     function renderDayList() {
       var el = document.getElementById('dayList');
-      var rows = APP.dates || [];
-      if (!rows.length) {
+      var all = APP.dates || [];
+      if (!all.length) {
         el.innerHTML = '<p class="sub">No dates loaded.</p>';
+        updateMonthNav();
+        return;
+      }
+      ensureViewMonth();
+      var rows = all.filter(function(d) { return d.iso.slice(0, 7) === APP.viewMonth; });
+      if (document.getElementById('filterMissingVote') && document.getElementById('filterMissingVote').checked) {
+        rows = rows.filter(function(d) { return !d.myVote; });
+      }
+      if (!rows.length) {
+        el.innerHTML = '<p class="sub">No days in this view. Try another month or turn off the filter.</p>';
+        updateMonthNav();
         return;
       }
       var h = '';
       rows.forEach(function(d) {
         var booked = !!findConfirmed(d.iso);
+        var dayNum = String(parseInt(d.iso.slice(8, 10), 10));
         var pills = '';
         (APP.players || []).forEach(function(p) {
           var v = (d.votes && d.votes[p.id]) || '';
@@ -390,17 +480,24 @@
           actions = '<button type="button" class="btn btn-primary js-book" data-iso="' + esc(d.iso) + '">Book</button>';
         }
         h += '<div class="day-row" data-iso="' + esc(d.iso) + '">' +
-          '<div class="day-meta"><strong>' + esc(d.dayLabel) + '</strong>' + esc(d.label) + '</div>' +
-          '<div><div class="vote-pills">' + pills + '</div>' +
-          '<div class="my-vote" style="margin-top:6px;">' +
+          '<div class="day-date-col">' +
+            '<div class="day-num">' + esc(dayNum) + '</div>' +
+            '<div class="day-sub">' + esc(daySubLine(d)) + '</div>' +
+          '</div>' +
+          '<div class="day-my-col">' +
+          '<div class="my-vote">' +
           '<span style="font-size:0.65rem;color:var(--text-dim);margin-right:4px;">You:</span>' +
-          '<button type="button" class="js-vote' + b1 + '" data-iso="' + esc(d.iso) + '" data-v="available">Available</button>' +
+          '<button type="button" class="js-vote' + b1 + '" data-iso="' + esc(d.iso) + '" data-v="available">Yes</button>' +
           '<button type="button" class="js-vote' + b2 + '" data-iso="' + esc(d.iso) + '" data-v="maybe">Maybe</button>' +
-          '<button type="button" class="js-vote' + b3 + '" data-iso="' + esc(d.iso) + '" data-v="unavailable">Out</button>' +
+          '<button type="button" class="js-vote' + b3 + '" data-iso="' + esc(d.iso) + '" data-v="unavailable">No</button>' +
           '</div></div>' +
-          '<div class="day-actions-col">' + ft + actions + '</div></div>';
+          '<div class="day-actions-col">' +
+            '<div class="vote-pills">' + pills + '</div>' +
+            '<div class="day-actions-btns">' + ft + actions + '</div>' +
+          '</div></div>';
       });
       el.innerHTML = h;
+      updateMonthNav();
       el.querySelectorAll('.js-vote').forEach(function(btn) {
         btn.addEventListener('click', function(ev) {
           ev.stopPropagation();
@@ -454,6 +551,7 @@
       if (r.fullTableDates) APP.fullTableDates = r.fullTableDates;
       if (r.arcadiaDefaultLocation) APP.arcadiaDefaultLocation = r.arcadiaDefaultLocation;
       if (r.me && r.me.displayName) document.getElementById('dispName').textContent = r.me.displayName;
+      ensureViewMonth();
       renderConfirmed();
       renderDayList();
     }
@@ -489,6 +587,21 @@
       });
     });
 
+    function shiftMonth(delta) {
+      var months = distinctMonths(APP.dates || []);
+      var idx = months.indexOf(APP.viewMonth);
+      var newIdx = idx + delta;
+      if (newIdx < 0 || newIdx >= months.length) return;
+      APP.viewMonth = months[newIdx];
+      renderDayList();
+    }
+
+    document.getElementById('btnMonthPrev').addEventListener('click', function() { shiftMonth(-1); });
+    document.getElementById('btnMonthNext').addEventListener('click', function() { shiftMonth(1); });
+    document.getElementById('filterMissingVote').addEventListener('change', function() {
+      renderDayList();
+    });
+
     function openConfirm(iso) {
       APP.pendingIso = iso;
       var d = findDateEntry(iso);
@@ -515,7 +628,7 @@
       var kind = document.getElementById('cfKind').value;
       var loc = document.getElementById('cfLoc');
       if (kind === 'arcadia') {
-        if (!loc.value.trim()) loc.value = APP.arcadiaDefaultLocation || 'Arcadia Games, 19 Essex St, London WC2R 3AT';
+        if (!loc.value.trim()) loc.value = APP.arcadiaDefaultLocation || '';
       } else {
         if (!loc.value.trim()) loc.value = 'Online / home';
       }
@@ -525,13 +638,12 @@
       (APP.players || []).forEach(function(p) {
         var d = findDateEntry(APP.pendingIso);
         var v = d && d.votes ? (d.votes[p.id] || '') : '';
-        var can = (v === 'available' || v === 'maybe');
         var dis = isGh ? ' disabled' : '';
-        var checked = isGh ? true : can;
+        var checked = isGh ? true : (v === 'available' || v === 'maybe');
         var chkAttr = checked ? ' checked' : '';
         html += '<label style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:0.85rem;">' +
           '<input type="checkbox" class="cf-att-cb" data-id="' + esc(p.id) + '"' + chkAttr + dis + '/> ' +
-          esc(p.displayName) + (can ? '' : ' (not available)') +
+          esc(p.displayName) +
         '</label>';
       });
       att.innerHTML = html;
@@ -552,6 +664,12 @@
       });
       var err = document.getElementById('cfErr');
       err.style.display = 'none';
+      var warns = collectBookingWarnings(kind, iso, ids);
+      if (warns.length) {
+        var msg = 'Some players have not voted Yes, or voted Maybe/No, or have no vote:\n\n' + warns.join('\n') +
+          '\n\nBook this session anyway?';
+        if (!window.confirm(msg)) return;
+      }
       api('confirmSession', {
         date: iso,
         kind: kind,
@@ -647,15 +765,8 @@
             }
             var sw = document.getElementById('secretWrap');
             var needSecret = !!(b.ok && b.requiresGroupSecret);
-            if (needSecret) {
-              sw.classList.remove('hidden');
-              document.getElementById('gateSub').textContent =
-                'Coordinate availability for the Weald campaign and Arcadia sessions. Enter the shared group secret, then pick your name.';
-            } else {
-              sw.classList.add('hidden');
-              document.getElementById('gateSub').textContent =
-                'Coordinate availability for the Weald campaign and Arcadia sessions. Pick your name to continue.';
-            }
+            if (needSecret) sw.classList.remove('hidden');
+            else sw.classList.add('hidden');
             showGate();
           });
         }
