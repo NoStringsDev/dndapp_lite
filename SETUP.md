@@ -16,6 +16,12 @@ Copy the database id into `wrangler.toml` as `database_id` for `dndapp-lite-db`.
 npm run db:migrate:remote
 ```
 
+To load the default party (Chris, Emil, Jose, Aidan) into **production** D1:
+
+```bash
+npm run db:seed:remote
+```
+
 ## 3. Cloudflare Pages project
 
 - **Build command**: leave empty (static site).
