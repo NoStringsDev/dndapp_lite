@@ -11,4 +11,4 @@ binding           = "DB"
 database_name     = "dndapp-lite-db"
 database_id       = "6cf30f37-0255-41d8-9448-10892a471a31"
 
-# GROUP_SECRET — set in Cloudflare Pages → Settings → Environment variables (secret)
+# Optional: GROUP_SECRET in Pages → Environment variables — if set, gate shows a password field.

@@ -192,9 +192,9 @@
 <body>
   <div id="gate" class="screen">
     <h1>The Green Hunger</h1>
-    <p class="sub">Coordinate availability for the Weald campaign and Arcadia sessions. Enter the shared group secret and your name.</p>
+    <p class="sub" id="gateSub">Coordinate availability for the Weald campaign and Arcadia sessions. Pick your name to continue.</p>
     <div class="gate-card">
-      <div class="field">
+      <div class="field hidden" id="secretWrap">
         <label for="secret">Group secret</label>
         <input id="secret" type="password" autocomplete="current-password" placeholder="From your DM"/>
       </div>
@@ -644,6 +644,17 @@
               });
             } else {
               sel.innerHTML = '<option value="">No players configured</option>';
+            }
+            var sw = document.getElementById('secretWrap');
+            var needSecret = !!(b.ok && b.requiresGroupSecret);
+            if (needSecret) {
+              sw.classList.remove('hidden');
+              document.getElementById('gateSub').textContent =
+                'Coordinate availability for the Weald campaign and Arcadia sessions. Enter the shared group secret, then pick your name.';
+            } else {
+              sw.classList.add('hidden');
+              document.getElementById('gateSub').textContent =
+                'Coordinate availability for the Weald campaign and Arcadia sessions. Pick your name to continue.';
             }
             showGate();
           });

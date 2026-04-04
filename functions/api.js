@@ -92,7 +92,7 @@ function cookieSecureSuffix(request) {
 async function route(action, payload, actor, env, repo, request) {
   switch (action) {
     case 'getPublicBootstrap':
-      return svc.getPublicBootstrap(repo);
+      return svc.getPublicBootstrap(repo, env);
 
     case 'login': {
       const result = await svc.login(payload, env, repo);

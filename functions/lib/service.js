@@ -139,17 +139,18 @@ function kindLabel(kind) {
   return 'The Green Hunger';
 }
 
-export async function getPublicBootstrap(repo) {
+export async function getPublicBootstrap(repo, env) {
   const players = await repo.listActivePlayers();
-  return { ok: true, players };
+  const requiresGroupSecret = Boolean(String(env?.GROUP_SECRET || '').trim());
+  return { ok: true, players, requiresGroupSecret };
 }
 
 export async function login(payload, env, repo) {
   const secret = String(payload?.groupSecret || '').trim();
   const playerId = String(payload?.playerId || '').trim();
   const expected = String(env.GROUP_SECRET || '').trim();
-  if (!expected) return { ok: false, error: 'Server is not configured (GROUP_SECRET).' };
-  if (!secret || secret !== expected) return { ok: false, error: 'Invalid group secret.' };
+  if (expected && secret !== expected) return { ok: false, error: 'Invalid group secret.' };
+  if (!playerId) return { ok: false, error: 'Pick a player.' };
   const player = await repo.getPlayerById(playerId);
   if (!player || !player.isActive) return { ok: false, error: 'Unknown player.' };
 

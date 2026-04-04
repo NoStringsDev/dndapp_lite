@@ -1,6 +1,6 @@
 # dndapp_lite — deployment
 
-Target: **Cloudflare Pages** with **D1** and one **secret** (`GROUP_SECRET`).
+Target: **Cloudflare Pages** with **D1**. Login is **name only** unless you add an optional **`GROUP_SECRET`**.
 
 ## 1. Create the D1 database
 
@@ -33,15 +33,17 @@ Bind **D1**:
 - Variable name: `DB`
 - Database: `dndapp-lite-db`
 
-## 4. Secret
+## 4. Optional: group password
 
-In **Pages → Settings → Environment variables** (production and preview if needed):
+Skip this section for an open gate (pick name only).
+
+To require a shared password **before** the name list, add in **Pages → Settings → Environment variables**:
 
 | Name           | Type   | Value                                      |
 |----------------|--------|--------------------------------------------|
 | `GROUP_SECRET` | Secret | A long random string only your party knows |
 
-Do not commit `GROUP_SECRET` to git.
+Do not commit `GROUP_SECRET` to git. Remove or leave unset for no password.
 
 ## 5. Deploy
 
@@ -55,12 +57,6 @@ npm run deploy
 
 After login, the app shows an **https://…/calendar/&lt;token&gt;.ics** URL. Subscribers can use **Subscribe** / **From URL** in Apple Calendar or Google Calendar. Use **Rotate link** if the URL leaks.
 
-## Optional: local secrets file
+## Optional: local `.dev.vars`
 
-For `wrangler pages dev`, create `.dev.vars` (gitignored):
-
-```
-GROUP_SECRET=your-local-test-secret
-```
-
-See `.dev.vars.example`.
+For `wrangler pages dev`, you can create `.dev.vars` (gitignored) with `GROUP_SECRET=...` to test the password gate. Omit `GROUP_SECRET` to match production “name only” behaviour. See `.dev.vars.example`.
