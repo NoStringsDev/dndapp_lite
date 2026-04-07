@@ -144,10 +144,43 @@ function kindLabel(kind) {
   return 'The Green Hunger';
 }
 
+function normaliseSessionKind(kind) {
+  return kind === 'arcadia' ? 'arcadia' : 'green_hunger';
+}
+
+function normaliseTime(value, fallback) {
+  const t = String(value || '').trim();
+  return /^\d{2}:\d{2}$/.test(t) ? t : fallback;
+}
+
+function toConfirmedGames(bookings, nameById) {
+  return (bookings || []).map(b => {
+    const kind = normaliseSessionKind(b.kind);
+    const startTime = normaliseTime(b.startTime, '18:30');
+    const endTime = normaliseTime(b.endTime, '22:00');
+    return {
+      date: b.date,
+      label: formatDateLabel(b.date),
+      dayLabel: formatDayLabel(b.date),
+      kind,
+      kindLabel: kindLabel(kind),
+      startTime,
+      endTime,
+      location: b.location || '',
+      attendees: (b.attendeePlayerIds || []).map(id => ({ id, displayName: nameById[id] || id })),
+      sessionTime: `${startTime}–${endTime}`,
+    };
+  });
+}
+
 export async function getPublicBootstrap(repo, env) {
   const players = await repo.listActivePlayers();
   const requiresGroupSecret = Boolean(String(env?.GROUP_SECRET || '').trim());
-  return { ok: true, players, requiresGroupSecret };
+  const today = isoDateInTimeZone(new Date(), TZ);
+  const bookings = await repo.listBookingsFrom(today);
+  const nameById = Object.fromEntries(players.map(p => [p.id, p.displayName]));
+  const confirmedGames = toConfirmedGames(bookings, nameById);
+  return { ok: true, players, requiresGroupSecret, confirmedGames };
 }
 
 export async function login(payload, env, repo) {
@@ -211,18 +244,7 @@ async function buildAppPayload(repo, playerId) {
   const nameById = Object.fromEntries(players.map(p => [p.id, p.displayName]));
   const me = await repo.getPlayerById(playerId);
 
-  const confirmedGames = bookings.map(b => ({
-    date: b.date,
-    label: formatDateLabel(b.date),
-    dayLabel: formatDayLabel(b.date),
-    kind: b.kind,
-    kindLabel: kindLabel(b.kind),
-    startTime: b.startTime,
-    endTime: b.endTime,
-    location: b.location,
-    attendees: (b.attendeePlayerIds || []).map(id => ({ id, displayName: nameById[id] || id })),
-    sessionTime: `${b.startTime}–${b.endTime}`,
-  }));
+  const confirmedGames = toConfirmedGames(bookings, nameById);
 
   const datesPayload = dates.map(iso => ({
     iso,
