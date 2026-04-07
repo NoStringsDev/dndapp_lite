@@ -3,24 +3,27 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>The Green Hunger — Sessions</title>
-  <meta name="description" content="Coordinate sessions for The Green Hunger and Arcadia games."/>
-  <meta name="theme-color" content="#0d1210"/>
-  <meta name="apple-mobile-web-app-title" content="Green Hunger"/>
+  <title>The Parralleers — Sessions</title>
+  <meta name="description" content="Session scheduling for The Parralleers D&D group."/>
+  <meta name="theme-color" content="#0f0d0b"/>
+  <meta name="apple-mobile-web-app-title" content="Sessions"/>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg"/>
-  <link rel="apple-touch-icon" href="./favicon.svg"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png"/>
   <script>
   (function(){
     var m = {
-      name: 'The Green Hunger — Sessions',
-      short_name: 'Green Hunger',
+      name: 'The Parralleers — Sessions',
+      short_name: 'Sessions',
       description: 'Party availability and confirmed sessions',
       start_url: './',
       display: 'standalone',
-      background_color: '#0d1210',
-      theme_color: '#0d1210',
+      background_color: '#0f0d0b',
+      theme_color: '#0f0d0b',
       icons: [
-        { src: './favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }
+        { src: './icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+        { src: './icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+        { src: './favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }
       ]
     };
     var link = document.createElement('link');
@@ -29,231 +32,476 @@
     document.head.appendChild(link);
   })();
   </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600&family=Cinzel:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
   <style>
   :root {
-    --bg-deep: #0a0f0c;
-    --bg-card: #121a16;
-    --bg-elevated: #18231d;
-    --mist: rgba(120, 160, 130, 0.08);
-    --accent: #6b9f7d;
-    --accent-hover: #7fb892;
-    --accent-muted: #3d5c4a;
-    --text: #e4eae6;
-    --text-dim: #8fa396;
-    --border: #2a3830;
-    --avail: #4a8a62;
-    --maybe: #b89a5a;
-    --nay: #7a5a5a;
-    --radius: 10px;
-    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --bg:         #0f0d0b;
+    --bg-card:    #171410;
+    --bg-raised:  #1d1916;
+    --border:     #272018;
+    --border-md:  #302820;
+    --text:       #e2dbd0;
+    --text-dim:   #a09080;
+    --text-mute:  #5a5048;
+    --accent-gh:  #5a8a5e;
+    --accent-arc: #7a6ec0;
+    --font-serif:   'Lora', Georgia, serif;
+    --font-display: 'Cinzel', serif;
+    --font-sans:    'Inter', sans-serif;
   }
-  * { box-sizing: border-box; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { font-size: 16px; }
   body {
-    margin: 0;
-    min-height: 100dvh;
-    font-family: var(--font);
-    background: var(--bg-deep);
-    background-image:
-      radial-gradient(ellipse 120% 80% at 50% -20%, rgba(90, 130, 100, 0.18), transparent 55%),
-      linear-gradient(180deg, var(--bg-deep) 0%, #0d1512 100%);
+    background: var(--bg);
+    font-family: var(--font-sans);
     color: var(--text);
     -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
   }
-  a { color: var(--accent); }
-  .screen { max-width: 720px; margin: 0 auto; padding: 16px 14px 48px; }
-  h1 {
-    font-size: 1.35rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    margin: 0 0 6px;
-    color: var(--accent);
+  .screen {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 0;
   }
-  .sub { font-size: 0.82rem; color: var(--text-dim); line-height: 1.45; margin-bottom: 18px; }
-  .gate-card, .panel {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.35);
-  }
-  label { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 6px; }
+  .hidden { display: none !important; }
+  label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-mute); margin-bottom: 6px; }
   input[type="password"], input[type="text"], input[type="time"], select, textarea {
     width: 100%;
     padding: 10px 12px;
     border-radius: 8px;
-    border: 1px solid var(--border);
-    background: var(--bg-elevated);
+    border: 1px solid var(--border-md);
+    background: var(--bg-raised);
     color: var(--text);
     font-size: 0.95rem;
+    font-family: var(--font-sans);
   }
   textarea { min-height: 56px; resize: vertical; }
   .btn {
     display: inline-flex; align-items: center; justify-content: center;
     padding: 10px 16px; border-radius: 8px; border: none;
     font-weight: 600; font-size: 0.88rem; cursor: pointer;
-    background: var(--accent-muted); color: var(--text);
+    background: var(--bg-raised); color: var(--text);
+    font-family: var(--font-sans); min-height: 44px;
   }
-  .btn-primary { background: linear-gradient(180deg, var(--accent) 0%, var(--accent-muted) 100%); color: #0a100c; }
+  .btn-primary { background: #2e3c2a; color: #94cc94; }
   .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
-  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
-  .row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
-  .player-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border-md); color: var(--text-dim); }
+  .row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
+
+  .gate-page { background: var(--bg); padding-bottom: 48px; }
+  .gate-welcome { padding: 28px 20px 20px; text-align: center; }
+  .gate-welcome-title {
+    font-family: var(--font-serif);
+    font-size: 23px; font-weight: 600;
+    color: var(--text); letter-spacing: 0.01em;
+  }
+  .campaign-cards { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; }
+  .campaign-card {
+    border-radius: 14px; overflow: hidden;
+    position: relative; border: 1px solid var(--border-md);
+  }
+  .campaign-card.gh { min-height: 200px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .campaign-card.arc { min-height: 130px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .campaign-card-bg { position: absolute; inset: 0; }
+  .campaign-card-bg img {
+    width: 100%; height: 100%;
+    object-fit: cover; object-position: center;
+    display: block;
+  }
+  .campaign-card-filter {
+    position: absolute; inset: 0;
+    background: rgba(20,38,22,0.18);
+    mix-blend-mode: multiply;
+  }
+  .campaign-card.arc .campaign-card-filter { background: rgba(18,14,40,0.20); }
+  .campaign-card-scrim {
+    position: absolute; inset: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.15) 40%, rgba(0,0,0,0.70) 100%);
+  }
+  .campaign-card.arc .campaign-card-scrim {
+    background: linear-gradient(to bottom, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.15) 40%, rgba(0,0,0,0.72) 100%);
+  }
+  .campaign-card-content {
+    position: relative; z-index: 2;
+    padding: 14px 16px 16px;
+    display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  .campaign-card-tag {
+    font-size: 9px; letter-spacing: 0.2em;
+    text-transform: uppercase; font-weight: 600; margin-bottom: 5px;
+  }
+  .campaign-card-tag.gh { color: rgba(190,240,195,0.90); }
+  .campaign-card-tag.arc { color: rgba(210,195,255,0.90); }
+  .campaign-card-name {
+    font-family: var(--font-display);
+    font-size: 19px; font-weight: 700;
+    letter-spacing: 0.05em; line-height: 1.15;
+    text-shadow: 0 1px 10px rgba(0,0,0,0.6);
+  }
+  .campaign-card.gh .campaign-card-name { color: #e8f8e8; }
+  .campaign-card.arc .campaign-card-name { color: #e8e0ff; }
+  .campaign-sessions { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
+  .campaign-session-item { font-size: 11px; letter-spacing: 0.02em; line-height: 1.4; }
+  .campaign-card.gh .campaign-session-item { color: rgba(220,245,225,0.88); }
+  .campaign-card.arc .campaign-session-item { color: rgba(220,210,255,0.88); }
+  .gate-player-section { padding: 24px 16px 0; }
+  .gate-register-label {
+    font-family: var(--font-serif);
+    font-size: 17px; font-weight: 600;
+    color: var(--text);
+    margin-bottom: 16px;
+    letter-spacing: 0.01em;
+    text-align: center;
+  }
+  .player-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; margin-bottom: 20px;
+  }
   .player-choice {
-    border: 1px solid var(--border);
-    background: var(--bg-elevated);
-    color: var(--text-dim);
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 0.85rem;
-    cursor: pointer;
-  }
-  .player-choice.on {
-    border-color: var(--accent);
-    background: rgba(107,159,125,0.12);
-    color: var(--accent);
-    font-weight: 600;
-  }
-  .app-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-  .who { font-size: 0.8rem; color: var(--text-dim); }
-  .day-row {
-    display: grid;
-    grid-template-columns: 52px 1fr minmax(108px, 38%);
-    gap: 8px 10px;
-    align-items: start;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(42,56,48,0.6);
-  }
-  .day-row.day-is-today {
-    background: rgba(107,159,125,0.07);
-    border-radius: 8px;
-    margin: 2px -8px;
-    padding-left: 8px;
-    padding-right: 8px;
-  }
-  .day-row:last-child { border-bottom: none; }
-  .day-date-col { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-  .day-week { font-size: 0.72rem; color: var(--text-dim); line-height: 1.2; }
-  .day-date-main { display: flex; align-items: baseline; gap: 7px; }
-  .day-num { font-size: 1.55rem; font-weight: 800; line-height: 1; color: var(--text); letter-spacing: -0.03em; }
-  .day-month { font-size: 1.02rem; font-weight: 800; line-height: 1; color: var(--text); letter-spacing: -0.02em; }
-  .day-my-col { min-width: 0; }
-  .vote-pills-wrap {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 6px;
-    padding: 8px 10px;
-    border-radius: 8px;
-    border: 1px solid rgba(42,56,48,0.7);
-    background: rgba(24,35,29,0.45);
-  }
-  .vote-pills-label {
-    font-size: 0.62rem;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: #7f9087;
-    font-weight: 700;
-  }
-  .vote-pills { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; justify-content: flex-end; }
-  .vp { font-size: 0.64rem; padding: 2px 6px; border-radius: 999px; background: rgba(16,24,20,0.92); border: 1px solid #304239; color: #a9baaf; }
-  .vp.avail { border-color: var(--avail); color: #b8dcc4; }
-  .vp.maybe { border-color: var(--maybe); color: #e8d9b8; }
-  .vp.nope { border-color: var(--nay); color: #d4b8b8; }
-  .my-vote-label {
-    font-size: 0.68rem;
-    color: #9db0a4;
-    margin-bottom: 6px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-  }
-  .my-vote { display: flex; gap: 8px; flex-wrap: wrap; }
-  .my-vote button {
-    min-height: 42px;
-    min-width: 72px;
-    font-size: 0.82rem;
-    font-weight: 700;
-    padding: 9px 12px;
-    border-radius: 10px;
-    border: 1px solid #3a4f42;
-    background: #111a16;
-    color: #9fb0a6;
-    cursor: pointer;
-    touch-action: manipulation;
-    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
-  }
-  .my-vote button:focus-visible {
-    outline: 2px solid rgba(107,159,125,0.55);
-    outline-offset: 1px;
-  }
-  .my-vote button.vote-yes.on {
-    border-color: #7ec996;
-    color: #072214;
-    background: linear-gradient(180deg, #8ddba7 0%, #66b883 100%);
-    box-shadow: 0 0 0 1px rgba(125, 196, 153, 0.25);
-  }
-  .my-vote button.vote-maybe.on {
-    border-color: #d9b168;
-    color: #22180a;
-    background: linear-gradient(180deg, #eac680 0%, #c99849 100%);
-    box-shadow: 0 0 0 1px rgba(217, 177, 104, 0.22);
-  }
-  .my-vote button.vote-no.on {
-    border-color: #d38c8c;
-    color: #261212;
-    background: linear-gradient(180deg, #dd9a9a 0%, #c76f6f 100%);
-    box-shadow: 0 0 0 1px rgba(211, 140, 140, 0.22);
-  }
-  .badge-ft { font-size: 0.62rem; padding: 2px 8px; border-radius: 999px; background: rgba(107,159,125,0.2); color: var(--accent); font-weight: 700; }
-  .day-actions-col { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 0; }
-  .day-actions-btns { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; width: 100%; }
-  .day-actions-btns .btn { width: 100%; max-width: 140px; min-height: 42px; font-size: 0.86rem; padding: 9px 10px; }
-  .month-nav .btn { padding: 6px 12px; font-size: 0.85rem; }
-  .cal-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 12px; justify-content: space-between; }
-  .cal-controls label { margin: 0; text-transform: none; letter-spacing: normal; font-size: 0.78rem; color: var(--text-dim); display: flex; align-items: center; gap: 8px; cursor: pointer; }
-  .confirmed-widget {
     background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border: 1px solid var(--border-md);
+    border-radius: 11px;
+    padding: 16px 12px;
+    text-align: center; cursor: pointer;
+    transition: border-color 120ms, background 120ms;
+    min-height: 56px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-serif);
+    font-size: 16px; font-weight: 600;
+    color: var(--text-dim); letter-spacing: 0.02em;
+  }
+  .player-choice:hover { border-color: #3a3020; background: var(--bg-raised); }
+  .player-choice.on {
+    border-color: #a07840;
+    background: #1e1810;
+    color: #d4a464;
+    font-weight: 600;
+  }
+  .continue-btn {
+    width: 100%; padding: 16px;
+    border-radius: 11px; border: none;
+    background: #3a2c18; color: #d4a464;
+    font-family: var(--font-sans);
+    font-size: 14px; font-weight: 600;
+    letter-spacing: 0.07em; cursor: pointer;
+    min-height: 52px; transition: background 120ms;
+  }
+  .continue-btn:hover { background: #463420; }
+
+  .app-header {
+    padding: 15px 16px 13px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    justify-content: space-between;
+    background: var(--bg);
+  }
+  .app-title {
+    font-family: var(--font-serif);
+    font-size: 18px; font-weight: 600; color: var(--text);
+  }
+  .app-sub { font-size: 11px; color: var(--text-mute); margin-top: 2px; }
+  .app-sub strong { font-weight: 600; color: var(--text-dim); }
+  .signout-btn {
+    font-size: 11px; color: var(--text-mute);
+    background: transparent; border: 1px solid var(--border-md);
+    border-radius: 7px; padding: 8px 12px; cursor: pointer;
+    min-height: 36px; font-family: var(--font-sans);
+  }
+  .content { padding: 14px 16px 80px; }
+  .section-label {
+    font-size: 10px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--text-mute);
+    margin-bottom: 10px; font-weight: 500;
+  }
+  .confirmed-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .session-card {
+    border-radius: 13px; overflow: hidden;
+    position: relative; min-height: 100px;
+    border: 1px solid var(--border-md); cursor: pointer;
+  }
+  .session-card-bg { position: absolute; inset: 0; }
+  .session-card-bg img {
+    width: 100%; height: 100%;
+    object-fit: cover; object-position: center 40%; display: block;
+  }
+  .session-card-scrim {
+    position: absolute; inset: 0;
+    background: linear-gradient(to right, rgba(10,8,6,0.90) 0%, rgba(10,8,6,0.65) 55%, rgba(10,8,6,0.28) 100%);
+  }
+  .session-card.arc .session-card-scrim {
+    background: linear-gradient(to right, rgba(6,5,16,0.92) 0%, rgba(6,5,16,0.68) 55%, rgba(6,5,16,0.28) 100%);
+  }
+  .session-card-content { position: relative; z-index: 2; padding: 13px 14px; }
+  .session-campaign-tag {
+    font-size: 9px; letter-spacing: 0.18em;
+    text-transform: uppercase; margin-bottom: 4px; font-weight: 600;
+  }
+  .session-campaign-tag.gh { color: #90d898; }
+  .session-campaign-tag.arc { color: #b8a8ff; }
+  .session-date-large {
+    font-family: var(--font-serif);
+    font-size: 17px; font-weight: 600;
+    color: #f0ece4; letter-spacing: 0.01em;
+  }
+  .session-time-text { font-size: 11px; color: rgba(200,190,175,0.85); margin-top: 3px; }
+  .session-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  .chip {
+    font-size: 10px; padding: 3px 9px; border-radius: 999px;
+    background: rgba(255,255,255,0.09);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: rgba(225,218,205,0.95);
+  }
+  .chip.arc {
+    background: rgba(160,140,255,0.13);
+    border-color: rgba(160,140,255,0.28);
+    color: #c8b8ff;
+  }
+  .cal-sync-wrap {
+    background: var(--bg-card);
+    border: 1px solid var(--border-md);
+    border-radius: 13px;
     margin-bottom: 16px;
     overflow: hidden;
   }
-  .confirmed-hdr {
-    padding: 10px 12px;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--accent);
-    border-bottom: 1px solid var(--border);
-    background: rgba(107,159,125,0.06);
-  }
-  .confirmed-row {
-    display: flex; align-items: flex-start; gap: 10px;
-    padding: 10px 12px;
-    border-bottom: 1px solid rgba(42,56,48,0.5);
+  .cal-sync-toggle {
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-family: var(--font-sans);
+    padding: 12px 14px;
+    min-height: 44px;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    text-align: left;
   }
-  .confirmed-row:last-child { border-bottom: none; }
-  .confirmed-row:hover { background: rgba(107,159,125,0.05); }
-  .confirmed-date { font-weight: 700; font-size: 0.85rem; color: var(--text); min-width: 72px; }
-  .confirmed-time { font-size: 0.72rem; color: var(--text-dim); margin-top: 2px; }
-  .confirmed-kind { font-size: 0.68rem; color: var(--accent); margin-top: 4px; }
-  .confirmed-chips-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-  .chip { font-size: 0.65rem; padding: 2px 8px; border-radius: 999px; background: var(--bg-elevated); border: 1px solid var(--border); }
-  .cal-subscribe-box {
-    background: rgba(107,159,125,0.06);
-    border: 1px dashed var(--border);
-    border-radius: var(--radius);
-    padding: 12px;
-    margin-bottom: 16px;
-    font-size: 0.78rem;
+  .cal-sync-title { font-size: 13px; font-weight: 600; color: #c0b8ac; }
+  .cal-sync-hint { font-size: 11px; color: var(--text-mute); margin-top: 2px; line-height: 1.45; }
+  .cal-sync-chevron {
+    font-size: 12px;
+    color: var(--text-mute);
+    transition: transform 180ms ease;
+  }
+  .cal-sync-wrap.open .cal-sync-chevron { transform: rotate(180deg); }
+  .cal-sync-panel {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding: 12px 14px 14px;
+  }
+  .cal-sync-wrap.open .cal-sync-panel { display: block; }
+  .cal-sync-note { font-size: 11px; color: var(--text-mute); line-height: 1.5; margin-bottom: 10px; }
+  .cal-sync-primary { margin-bottom: 8px; }
+  .cal-sync-primary .small-btn { width: 100%; }
+  .cal-sync-advanced summary {
+    font-size: 11px;
     color: var(--text-dim);
+    cursor: pointer;
+    margin: 4px 0 8px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
-  .cal-url { word-break: break-all; font-size: 0.72rem; margin-top: 8px; color: var(--accent); }
+  .cal-feed-url { font-size: 10px; color: #4a7050; word-break: break-all; margin-bottom: 10px; }
+  .cal-feed-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .small-btn {
+    font-size: 11px; padding: 8px 13px;
+    border-radius: 7px; border: 1px solid var(--border-md);
+    background: var(--bg-raised); color: var(--text-dim);
+    cursor: pointer; font-family: var(--font-sans); min-height: 36px;
+  }
+  .month-nav {
+    display: flex; align-items: center;
+    justify-content: space-between; margin-bottom: 12px;
+  }
+  .month-nav-title {
+    font-family: var(--font-serif);
+    font-size: 17px; font-weight: 600; color: #c0b8ac;
+    min-width: 150px; text-align: center;
+  }
+  .month-nav-btn {
+    background: var(--bg-raised);
+    border: 1px solid var(--border-md);
+    border-radius: 7px; width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-dim); font-size: 17px;
+    font-family: var(--font-sans);
+  }
+  .filter-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .filter-toggle {
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer; user-select: none;
+  }
+  .toggle-track {
+    width: 36px; height: 20px; border-radius: 999px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border-md);
+    position: relative; flex-shrink: 0;
+    transition: background 200ms, border-color 200ms;
+  }
+  .toggle-thumb {
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--text-mute);
+    transition: transform 200ms, background 200ms;
+  }
+  .filter-toggle.on .toggle-track { background: #1e3020; border-color: #3a6040; }
+  .filter-toggle.on .toggle-thumb { transform: translateX(16px); background: #70b878; }
+  .filter-toggle-label { font-size: 12px; color: var(--text-dim); }
+  .divider { height: 1px; background: var(--border); margin-bottom: 2px; }
+
+  .day-empty { font-size: 12px; color: var(--text-mute); padding: 16px 4px; }
+  .day-row { border-bottom: 1px solid var(--border); overflow: hidden; }
+  .day-row:last-child { border-bottom: none; }
+  .day-collapsed {
+    display: grid;
+    grid-template-columns: 52px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 4px;
+    min-height: 68px;
+  }
+  .day-row.today-row .day-collapsed {
+    background: rgba(60,80,55,0.07);
+    border-radius: 9px;
+  }
+  .day-row.past-row {
+    opacity: 0.58;
+  }
+  .day-row.past-row .day-weekday,
+  .day-row.past-row .day-month-label { color: #6d645b; }
+  .day-row.past-row .day-num { color: #8e8375; }
+  .day-row.past-row .vbtn-sm {
+    color: #7d7368;
+    border-color: #28221b;
+    background: #14110e;
+  }
+  .day-row.past-row .vbtn-sm:hover {
+    border-color: #342c24;
+    color: #938779;
+  }
+  .day-row.past-row .pip { background: #3a3028; }
+  .day-row.past-row .full-table-badge {
+    color: #6f8f72;
+    background: #121b12;
+    border-color: #263a28;
+  }
+  .day-row.past-row .chevron,
+  .day-row.past-row .exp-party-label { color: #72685f; }
+  .day-row.past-row .pp.e {
+    background: #171410;
+    border-color: #28221b;
+    color: #776d62;
+  }
+  .day-weekday { font-size: 9px; color: var(--text-mute); letter-spacing: 0.1em; text-transform: uppercase; }
+  .day-num {
+    font-family: var(--font-serif);
+    font-size: 26px; font-weight: 600;
+    color: #c8c0b4; line-height: 1; letter-spacing: -0.02em;
+  }
+  .day-month-label { font-size: 10px; color: var(--text-mute); }
+  .day-row.today-row .day-num { color: #dff0e0; }
+  .vote-btns-collapsed {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 5px;
+  }
+  .vbtn-sm {
+    height: 44px;
+    border-radius: 8px;
+    border: 1px solid var(--border-md);
+    background: var(--bg-card);
+    color: var(--text-mute);
+    font-size: 11px; font-weight: 600;
+    cursor: pointer; letter-spacing: 0.04em;
+    transition: all 120ms;
+    font-family: var(--font-sans);
+    touch-action: manipulation;
+  }
+  .vbtn-sm:hover { border-color: #3a3028; color: var(--text-dim); }
+  .vbtn-sm.yes.on  { background: #182a1c; border-color: #3a7048; color: #80c088; }
+  .vbtn-sm.maybe.on { background: #221e0c; border-color: #6a5818; color: #c8a030; }
+  .vbtn-sm.no.on   { background: #221414; border-color: #6a3030; color: #c07070; }
+  .day-expand-col {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 6px;
+    padding: 8px 6px 8px 4px;
+    cursor: pointer;
+    min-width: 48px; min-height: 52px;
+    justify-content: center;
+    border-radius: 8px;
+    transition: background 100ms;
+    touch-action: manipulation;
+  }
+  .day-expand-col:hover { background: rgba(255,255,255,0.04); }
+  .pips-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .pip {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border-md);
+    transition: background 150ms;
+  }
+  .pip.y { background: #4a8a5a; }
+  .pip.m { background: #8a7030; }
+  .pip.n { background: #7a4444; }
+  .full-table-badge {
+    font-size: 9px; letter-spacing: 0.10em;
+    text-transform: uppercase; color: #7ab880;
+    background: #182818; border: 1px solid #2e5030;
+    border-radius: 999px; padding: 3px 7px;
+    white-space: nowrap; display: inline-block;
+    text-align: center; line-height: 1.4;
+  }
+  .chevron {
+    font-size: 11px; color: var(--text-mute);
+    transition: transform 200ms, color 200ms;
+    line-height: 1;
+  }
+  .day-row.open .chevron { transform: rotate(180deg); color: var(--text-dim); }
+  .day-expanded {
+    display: none;
+    padding: 0 4px 14px 4px;
+  }
+  .day-row.open .day-expanded { display: block; }
+  .exp-party-label {
+    font-size: 9px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--text-mute);
+    margin-bottom: 8px; font-weight: 500;
+  }
+  .party-pills-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+  .pp {
+    font-size: 11px; padding: 4px 10px;
+    border-radius: 999px; border: 1px solid; letter-spacing: 0.02em;
+  }
+  .pp.y  { background: #16201a; border-color: #2e4834; color: #78b880; }
+  .pp.m  { background: #1e1a0c; border-color: #403810; color: #b89838; }
+  .pp.n  { background: #1e1414; border-color: #402828; color: #b07070; }
+  .pp.e  { background: var(--bg-raised); border-color: var(--border-md); color: var(--text-mute); }
+  .book-btn {
+    width: 100%; padding: 15px;
+    border-radius: 10px; border: none;
+    background: #2e3c2a; color: #94cc94;
+    font-size: 13px; font-weight: 600;
+    letter-spacing: 0.07em; cursor: pointer;
+    font-family: var(--font-sans); min-height: 52px;
+    touch-action: manipulation;
+    transition: background 120ms;
+  }
+  .book-btn:hover { background: #364630; }
+  .confirmed-badge {
+    width: 100%; padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #3a4830; background: #161e14;
+    color: #6aaa68; font-size: 10px;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    text-align: center; font-weight: 600;
+  }
   .sheet-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    position: fixed; inset: 0; background: rgba(0,0,0,0.65);
     display: none; align-items: flex-end; justify-content: center;
     z-index: 50; padding: 12px;
   }
@@ -266,96 +514,121 @@
   .sheet {
     width: 100%; max-width: 480px; max-height: 90dvh; overflow: auto;
     background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius) var(--radius) 0 0;
-    padding: 16px;
+    border: 1px solid var(--border-md);
+    border-radius: 14px 14px 0 0;
+    padding: 20px 16px;
   }
   .sheet-from-top .sheet {
     border-radius: 0 0 var(--radius) var(--radius);
     max-height: min(90dvh, calc(100dvh - 24px));
   }
-  .confirmed-booking-hit {
-    text-align: right; cursor: pointer; max-width: 140px; margin-left: auto;
-    border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px;
-    background: rgba(107,159,125,0.08);
-    min-height: 44px;
-    touch-action: manipulation;
-  }
-  .confirmed-booking-hit .cb-line1 { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); }
-  .confirmed-booking-hit .cb-line2 { font-size: 0.72rem; color: var(--text); margin-top: 2px; line-height: 1.25; }
   .det-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; align-items: center; }
-  .sheet h3 { margin: 0 0 12px; font-size: 1rem; color: var(--accent); }
-  .field { margin-bottom: 12px; }
+  .sheet h3 { margin: 0 0 14px; font-family: var(--font-serif); font-size: 17px; font-weight: 600; color: var(--text); }
+  .field { margin-bottom: 14px; }
   .err { color: #c08080; font-size: 0.8rem; margin-top: 8px; }
-  .hidden { display: none !important; }
-  @media (max-width: 560px) {
-    .day-row { grid-template-columns: 1fr; }
-    .day-actions-col { align-items: stretch; }
-    .day-row { gap: 10px; padding: 14px 0; }
-    .my-vote { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .my-vote button { width: 100%; min-width: 0; }
-    .day-actions-col { gap: 10px; }
-    .vote-pills-wrap { order: 1; align-items: flex-start; }
-    .day-actions-btns { order: 2; align-items: stretch; gap: 8px; }
-    .vote-pills { justify-content: flex-start; }
-    .day-actions-btns .btn { max-width: none; }
-    .confirmed-booking-hit { max-width: none; width: 100%; margin-left: 0; align-self: stretch; text-align: left; }
-  }
   </style>
 </head>
 <body>
   <div id="gate" class="screen">
-    <h1 style="margin-bottom:12px;">The Green Hunger</h1>
-    <div class="gate-card">
-      <div class="field hidden" id="secretWrap">
-        <label for="secret">Group secret</label>
-        <input id="secret" type="password" autocomplete="current-password" placeholder="From your DM"/>
+    <div class="gate-page">
+      <div class="gate-welcome">
+        <div class="gate-welcome-title">Welcome, Parralleer</div>
       </div>
-      <div class="field">
-        <label>You are</label>
-        <div id="playerPicker" class="player-picker" aria-label="Select your player">
-          <span style="font-size:0.85rem;color:var(--text-dim);">Loading…</span>
+      <div class="campaign-cards">
+        <div class="campaign-card gh">
+          <div class="campaign-card-bg">
+            <img src="https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&q=80&fit=crop&crop=center" alt="The Green Hunger" onerror="this.style.display='none'"/>
+          </div>
+          <div class="campaign-card-filter"></div>
+          <div class="campaign-card-scrim"></div>
+          <div class="campaign-card-content">
+            <div class="campaign-card-tag gh">Current campaign</div>
+            <div class="campaign-card-name">The Green Hunger</div>
+            <div class="campaign-sessions" id="gate-gh-sessions"></div>
+          </div>
         </div>
+        <div class="campaign-card arc">
+          <div class="campaign-card-bg">
+            <img src="https://images.unsplash.com/photo-1465101162946-4377e57745c3?w=800&q=80&fit=crop&crop=center" alt="Arcadia" onerror="this.style.display='none'"/>
+          </div>
+          <div class="campaign-card-filter"></div>
+          <div class="campaign-card-scrim"></div>
+          <div class="campaign-card-content">
+            <div class="campaign-card-tag arc">Also playing</div>
+            <div class="campaign-card-name">Arcadia</div>
+            <div class="campaign-sessions" id="gate-arc-sessions"></div>
+          </div>
+        </div>
+      </div>
+      <div class="gate-player-section">
+        <div class="field hidden" id="secretWrap">
+          <label for="secret">Group secret</label>
+          <input id="secret" type="password" autocomplete="current-password" placeholder="From your DM"/>
+        </div>
+        <div class="gate-register-label">Register your availability</div>
+        <div id="playerPicker" class="player-grid" aria-label="Select your player"></div>
         <input id="playerSel" type="hidden" value=""/>
+        <button type="button" class="continue-btn" id="btnLogin">Continue</button>
+        <p id="gateErr" class="err" style="display:none;margin-top:10px;"></p>
       </div>
-      <div class="row-actions">
-        <button type="button" class="btn btn-primary" id="btnLogin">Continue</button>
-      </div>
-      <p id="gateErr" class="err" style="display:none;"></p>
     </div>
   </div>
 
   <div id="app" class="screen hidden">
     <div class="app-header">
       <div>
-        <h1 style="margin-bottom:2px;">Sessions</h1>
-        <div class="who">Signed in as <strong id="dispName"></strong></div>
+        <div class="app-title">Sessions</div>
+        <div class="app-sub">Signed in as <strong id="dispName"></strong> · The Parralleers</div>
       </div>
-      <button type="button" class="btn btn-ghost" id="btnLogout">Sign out</button>
+      <button type="button" class="signout-btn" id="btnLogout">Sign out</button>
     </div>
-
-    <div id="confirmed-wrap"></div>
-
-    <div class="cal-subscribe-box" id="ics-box">
-      <div style="font-weight:600;color:var(--text);margin-bottom:6px;">Calendar feed</div>
-      <div>Subscribe to confirmed sessions you voted Yes for.</div>
-      <div id="ics-help" class="cal-url">(loading subscription link...)</div>
-      <div id="ics-fallbacks" class="cal-url hidden"></div>
-      <div class="row-actions" style="margin-top:10px;">
-        <button type="button" class="btn btn-ghost" id="btnSubscribeIcs">Subscribe to calendar</button>
-        <button type="button" class="btn btn-ghost hidden" id="btnNewIcsLink">Create new subscription link</button>
-      </div>
-    </div>
-
-    <div class="panel" style="padding:12px;">
-      <div class="cal-controls">
-        <div class="month-nav" style="display:flex;align-items:center;gap:8px;">
-          <button type="button" class="btn btn-ghost" id="btnMonthPrev" aria-label="Previous month">◀</button>
-          <span id="monthLabel" style="font-weight:600;min-width:150px;text-align:center;font-size:0.9rem;"></span>
-          <button type="button" class="btn btn-ghost" id="btnMonthNext" aria-label="Next month">▶</button>
+    <div class="content">
+      <div id="confirmed-wrap"></div>
+      <div class="cal-sync-wrap" id="ics-box">
+        <button
+          type="button"
+          class="cal-sync-toggle"
+          id="btnToggleIcsPanel"
+          aria-expanded="false"
+          aria-controls="ics-panel"
+        >
+          <span>
+            <span class="cal-sync-title">Calendar sync</span>
+            <span class="cal-sync-hint">Subscribe in Apple or Google Calendar</span>
+          </span>
+          <span class="cal-sync-chevron">&#8964;</span>
+        </button>
+        <div class="cal-sync-panel" id="ics-panel" hidden>
+          <div class="cal-sync-note">Shows confirmed sessions where you voted Yes.</div>
+          <div class="cal-sync-primary">
+            <button type="button" class="small-btn" id="btnSubscribeIcs">Subscribe</button>
+          </div>
+          <details class="cal-sync-advanced" id="ics-advanced">
+            <summary>Advanced options</summary>
+            <div id="ics-url" class="cal-feed-url"></div>
+            <div class="cal-feed-btns">
+              <button type="button" class="small-btn" id="btnCopyIcs">Copy feed URL</button>
+              <button type="button" class="small-btn" id="btnRotateIcs">Rotate link</button>
+            </div>
+          </details>
         </div>
-        <label><input type="checkbox" id="filterMissingVote"/> Only days I haven’t voted on</label>
       </div>
+      <div class="month-nav">
+        <button type="button" class="month-nav-btn" id="btnMonthPrev" aria-label="Previous month">&#8249;</button>
+        <span id="monthLabel" class="month-nav-title"></span>
+        <button type="button" class="month-nav-btn" id="btnMonthNext" aria-label="Next month">&#8250;</button>
+      </div>
+      <div class="filter-row">
+        <div class="filter-toggle" id="filterMissingVoteToggle">
+          <div class="toggle-track"><div class="toggle-thumb"></div></div>
+          <span class="filter-toggle-label">Only days I haven't voted on</span>
+        </div>
+        <div class="filter-toggle" id="filterFullTableToggle">
+          <div class="toggle-track"><div class="toggle-thumb"></div></div>
+          <span class="filter-toggle-label">Full table dates only</span>
+        </div>
+      </div>
+      <div class="divider"></div>
       <div id="dayList"></div>
     </div>
   </div>
@@ -505,28 +778,52 @@
     }
 
     function renderConfirmed() {
-      var wrap = document.getElementById('confirmed-wrap');
-      var g = APP.confirmedGames || [];
-      var today = APP.todayIso || new Date().toISOString().slice(0, 10);
-      var upcoming = g.filter(function(c) { return c.date >= today; });
-      if (!upcoming.length) { wrap.innerHTML = ''; return; }
-      var h = '<div class="confirmed-widget"><div class="confirmed-hdr">Confirmed sessions</div>';
-      upcoming.forEach(function(c) {
-        var safeIso = esc(c.date);
-        h += '<div class="confirmed-row" data-iso="' + safeIso + '">' +
-          '<div><div class="confirmed-date">' + esc(c.label) + '</div>' +
-          '<div class="confirmed-time">' + esc(c.sessionTime || '') + '</div>' +
-          '<div class="confirmed-kind">' + esc(c.kindLabel || '') + '</div></div>' +
-          '<div style="flex:1;"><div class="confirmed-chips-row">';
-        (c.attendees || []).forEach(function(a) {
-          h += '<span class="chip">' + esc(a.displayName) + '</span>';
-        });
-        h += '</div></div></div>';
+      var el = document.getElementById('confirmed-wrap');
+      if (!el) return;
+      var games = APP.confirmedGames || [];
+      if (!games.length) { el.innerHTML = ''; return; }
+
+      var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+      function longDate(iso) {
+        var d = new Date(iso + 'T12:00:00Z');
+        return days[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + months[d.getUTCMonth()];
+      }
+
+      var GH_IMG = 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=600&q=75&fit=crop&crop=center';
+      var ARC_IMG = 'https://images.unsplash.com/photo-1465101162946-4377e57745c3?w=600&q=75&fit=crop&crop=center';
+
+      var h = '<div class="section-label">Confirmed sessions</div><div class="confirmed-list">';
+
+      games.forEach(function(g) {
+        var isGH = g.kind === 'green_hunger';
+        var img = isGH ? GH_IMG : ARC_IMG;
+        var kindClass = isGH ? 'gh' : 'arc';
+        var kindLabel = isGH ? 'The Green Hunger' : 'Arcadia';
+        var attendees = (g.attendees || []).map(function(a) {
+          return '<span class="chip' + (isGH ? '' : ' arc') + '">' + esc(a.displayName) + '</span>';
+        }).join('');
+
+        h += '<div class="session-card ' + kindClass + '" data-iso="' + esc(g.date) + '" role="button" tabindex="0">' +
+          '<div class="session-card-bg"><img src="' + img + '" alt="' + kindLabel + '" onerror="this.parentElement.style.background=\'' + (isGH ? '#1a2a1a' : '#12101e') + '\'"/></div>' +
+          '<div class="session-card-scrim"></div>' +
+          '<div class="session-card-content">' +
+            '<div class="session-campaign-tag ' + kindClass + '">' + esc(kindLabel) + '</div>' +
+            '<div class="session-date-large">' + esc(longDate(g.date)) + '</div>' +
+            '<div class="session-time-text">' + esc(g.startTime || '') + ' – ' + esc(g.endTime || '') + '</div>' +
+            '<div class="session-chips">' + attendees + '</div>' +
+          '</div>' +
+        '</div>';
       });
+
       h += '</div>';
-      wrap.innerHTML = h;
-      wrap.querySelectorAll('.confirmed-row').forEach(function(el) {
-        el.addEventListener('click', function() { openDetail(el.getAttribute('data-iso')); });
+      el.innerHTML = h;
+
+      el.querySelectorAll('.session-card').forEach(function(card) {
+        card.addEventListener('click', function() {
+          openBookingEditor(this.getAttribute('data-iso'));
+        });
       });
     }
 
@@ -560,96 +857,131 @@
       var all = APP.dates || [];
       if (!all.length) {
         el.innerHTML = APP.initialLoadPending
-          ? '<p class="sub">Loading calendar…</p>'
-          : '<p class="sub">No dates loaded.</p>';
+          ? '<p class="day-empty">Loading calendar…</p>'
+          : '<p class="day-empty">No dates loaded.</p>';
         updateMonthNav();
         return;
       }
       ensureViewMonth();
       var rows = all.filter(function(d) { return d.iso.slice(0, 7) === APP.viewMonth; });
-      if (document.getElementById('filterMissingVote') && document.getElementById('filterMissingVote').checked) {
+      if (document.getElementById('filterMissingVoteToggle') && document.getElementById('filterMissingVoteToggle').classList.contains('on')) {
         rows = rows.filter(function(d) { return !d.myVote; });
       }
+      if (document.getElementById('filterFullTableToggle') && document.getElementById('filterFullTableToggle').classList.contains('on')) {
+        rows = rows.filter(function(d) { return !!d.fullTableOk; });
+      }
       if (!rows.length) {
-        el.innerHTML = '<p class="sub">No days in this view. Try another month or turn off the filter.</p>';
+        el.innerHTML = '<p class="day-empty">No days in this view.</p>';
         updateMonthNav();
         return;
       }
-      var playersByName = (APP.players || []).slice().sort(function(a, z) {
-        return String(a.displayName || '').localeCompare(String(z.displayName || ''), undefined, { sensitivity: 'base' });
-      });
+      var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      function pipClass(vote) {
+        if (vote === 'available') return 'y';
+        if (vote === 'maybe') return 'm';
+        if (vote === 'unavailable') return 'n';
+        return 'e';
+      }
       var h = '';
+      var todayIso = APP.todayIso || new Date().toISOString().slice(0, 10);
       rows.forEach(function(d) {
         var booked = !!findConfirmed(d.iso);
-        var dayNum = String(parseInt(d.iso.slice(8, 10), 10));
-        var dayMonth = monthNameFromIso(d.iso);
-        var pills = '';
-        playersByName.forEach(function(p) {
-          var v = (d.votes && d.votes[p.id]) || '';
-          var cls = voteClass(v);
-          pills += '<span class="vp ' + cls + '">' + esc(p.displayName) + ': ' + voteLabel(v) + '</span>';
-        });
+        var date = new Date(d.iso + 'T12:00:00Z');
+        var weekday = days[date.getUTCDay()];
+        var dayNum = date.getUTCDate();
+        var monthLabel = months[date.getUTCMonth()];
         var my = d.myVote || '';
-        var b1 = my === 'available' ? ' on' : '';
-        var b2 = my === 'maybe' ? ' on' : '';
-        var b3 = my === 'unavailable' ? ' on' : '';
-        var ft = d.fullTableOk ? '<span class="badge-ft">Full table</span>' : '';
-        var actions = '';
+        var yOn = my === 'available' ? ' on' : '';
+        var mOn = my === 'maybe' ? ' on' : '';
+        var nOn = my === 'unavailable' ? ' on' : '';
+        var expandIndicator;
+        if (d.fullTableOk) {
+          expandIndicator = '<span class="full-table-badge">Full<br>table</span>';
+        } else {
+          var pipHtml = '';
+          (APP.players || []).forEach(function(p) {
+            var v = (d.votes && d.votes[p.id]) || '';
+            pipHtml += '<div class="pip ' + pipClass(v) + '"></div>';
+          });
+          expandIndicator = '<div class="pips-grid">' + pipHtml + '</div>';
+        }
+        var partyPills = '';
+        (APP.players || []).forEach(function(p) {
+          var v = (d.votes && d.votes[p.id]) || '';
+          var cls = pipClass(v);
+          var label = v === 'available' ? 'Yes' : v === 'maybe' ? 'Maybe' : v === 'unavailable' ? 'No' : '—';
+          partyPills += '<span class="pp ' + cls + '">' + esc(p.displayName) + ': ' + label + '</span>';
+        });
+        var expandedAction = '';
         if (booked) {
           var bk = findConfirmed(d.iso);
-          var ktext = bk ? esc(bk.kindLabel || '') : '';
-          actions = '<div class="confirmed-booking-hit js-view" data-iso="' + esc(d.iso) + '" role="button" tabindex="0">' +
-            '<div class="cb-line1">Confirmed</div>' +
-            '<div class="cb-line2">' + ktext + '</div></div>';
+          expandedAction = '<div class="confirmed-badge">✓ Confirmed' + (bk ? ' — ' + esc(bk.kindLabel || '') : '') + '</div>';
         } else {
-          actions = '<button type="button" class="btn btn-primary js-book" data-iso="' + esc(d.iso) + '">Book</button>';
+          expandedAction = '<button type="button" class="book-btn js-book" data-iso="' + esc(d.iso) + '">Book session</button>';
         }
         var isToday = APP.todayIso && d.iso === APP.todayIso;
-        h += '<div class="day-row' + (isToday ? ' day-is-today' : '') + '" data-iso="' + esc(d.iso) + '">' +
+        var isPast = d.iso < todayIso;
+        h += '<div class="day-row' + (isToday ? ' today-row' : '') + (isPast ? ' past-row' : '') + '" data-iso="' + esc(d.iso) + '">' +
+          '<div class="day-collapsed">' +
           '<div class="day-date-col">' +
-            '<div class="day-week">' + esc(d.dayLabel || '') + '</div>' +
-            '<div class="day-date-main"><div class="day-num">' + esc(dayNum) + '</div><div class="day-month">' + esc(dayMonth) + '</div></div>' +
+            '<div class="day-weekday">' + weekday + '</div>' +
+            '<div class="day-num">' + dayNum + '</div>' +
+            '<div class="day-month-label">' + monthLabel + '</div>' +
           '</div>' +
-          '<div class="day-my-col">' +
-          '<div class="my-vote-label">Your vote</div>' +
-          '<div class="my-vote">' +
-          '<button type="button" class="js-vote vote-yes' + b1 + '" data-iso="' + esc(d.iso) + '" data-v="available">Yes</button>' +
-          '<button type="button" class="js-vote vote-maybe' + b2 + '" data-iso="' + esc(d.iso) + '" data-v="maybe">Maybe</button>' +
-          '<button type="button" class="js-vote vote-no' + b3 + '" data-iso="' + esc(d.iso) + '" data-v="unavailable">No</button>' +
-          '</div></div>' +
-          '<div class="day-actions-col">' +
-            '<div class="vote-pills-wrap"><div class="vote-pills-label">Party votes</div><div class="vote-pills">' + pills + '</div></div>' +
-            '<div class="day-actions-btns">' + ft + actions + '</div>' +
-          '</div></div>';
+          '<div class="day-vote-col">' +
+            '<div class="vote-btns-collapsed">' +
+              '<button type="button" class="vbtn-sm yes' + yOn + ' js-vote" data-vote="available" data-iso="' + esc(d.iso) + '">Yes</button>' +
+              '<button type="button" class="vbtn-sm maybe' + mOn + ' js-vote" data-vote="maybe" data-iso="' + esc(d.iso) + '">Maybe</button>' +
+              '<button type="button" class="vbtn-sm no' + nOn + ' js-vote" data-vote="unavailable" data-iso="' + esc(d.iso) + '">No</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="day-expand-col js-expand" data-iso="' + esc(d.iso) + '">' +
+            expandIndicator +
+            '<span class="chevron">&#8964;</span>' +
+          '</div>' +
+          '</div>' +
+          '<div class="day-expanded">' +
+            '<div class="exp-party-label">Party votes</div>' +
+            '<div class="party-pills-row">' + partyPills + '</div>' +
+            expandedAction +
+          '</div>' +
+          '</div>';
       });
       el.innerHTML = h;
       updateMonthNav();
       el.querySelectorAll('.js-vote').forEach(function(btn) {
-        btn.addEventListener('click', function(ev) {
-          ev.stopPropagation();
-          var iso = btn.getAttribute('data-iso');
-          var v = btn.getAttribute('data-v');
-          setMyVote(iso, v);
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var iso = this.getAttribute('data-iso');
+          var vote = this.getAttribute('data-vote');
+          var d = findDateEntry(iso);
+          if (!d) return;
+          d.myVote = (d.myVote === vote) ? '' : vote;
+          queueSave();
+          renderDayList();
+        });
+      });
+      el.querySelectorAll('.js-expand').forEach(function(col) {
+        col.addEventListener('click', function() {
+          var iso = this.getAttribute('data-iso');
+          var row = el.querySelector('.day-row[data-iso="' + iso + '"]');
+          if (row) row.classList.toggle('open');
         });
       });
       el.querySelectorAll('.js-book').forEach(function(btn) {
-        btn.addEventListener('click', function(ev) {
-          ev.stopPropagation();
-          openConfirm(btn.getAttribute('data-iso'));
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openConfirm(this.getAttribute('data-iso'));
         });
       });
-      el.querySelectorAll('.js-view').forEach(function(btn) {
-        btn.addEventListener('click', function(ev) {
-          ev.stopPropagation();
-          openDetail(btn.getAttribute('data-iso'));
+      if (!APP.hasScrolledToToday && APP.todayIso) {
+        APP.hasScrolledToToday = true;
+        requestAnimationFrame(function() {
+          var row = el.querySelector('.day-row[data-iso="' + APP.todayIso + '"]');
+          if (row) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
         });
-        btn.addEventListener('keydown', function(ev) {
-          if (ev.key === 'Enter' || ev.key === ' ') {
-            ev.preventDefault();
-            openDetail(btn.getAttribute('data-iso'));
-          }
-        });
-      });
+      }
     }
 
     function setMyVote(iso, v) {
@@ -725,42 +1057,44 @@
     }
 
     function renderIcsUi() {
-      var help = document.getElementById('ics-help');
-      var fb = document.getElementById('ics-fallbacks');
-      var btnSub = document.getElementById('btnSubscribeIcs');
-      var btnNew = document.getElementById('btnNewIcsLink');
+      var el = document.getElementById('ics-url');
+      var copyBtn = document.getElementById('btnCopyIcs');
+      var rotateBtn = document.getElementById('btnRotateIcs');
+      var subscribeBtn = document.getElementById('btnSubscribeIcs');
+      if (!el || !copyBtn || !rotateBtn || !subscribeBtn) return;
       if (!APP.icsUrl) {
-        help.textContent = '(could not load subscription link)';
-        fb.classList.add('hidden');
-        btnSub.disabled = true;
-        btnNew.classList.add('hidden');
+        el.textContent = '(could not load feed URL)';
+        copyBtn.disabled = true;
+        rotateBtn.disabled = true;
+        subscribeBtn.disabled = true;
         return;
       }
-      btnSub.disabled = false;
-      help.textContent = APP.hasTriedSubscribe
-        ? 'If your app did not open, use one of these options:'
-        : 'Opens your preferred calendar app where supported.';
-      fb.innerHTML =
-        '<a href="' + esc(APP.icsWebcalUrl || APP.icsUrl) + '">Open calendar app (webcal)</a><br/>' +
-        '<a href="' + esc(APP.icsUrl) + '" target="_blank" rel="noopener">Open feed URL</a><br/>' +
-        '<a href="https://calendar.google.com/calendar/u/0/r/settings/addbyurl" target="_blank" rel="noopener">Google Calendar: Add by URL</a><br/>' +
-        '<a href="https://outlook.live.com/calendar/0/addcalendar" target="_blank" rel="noopener">Outlook: Add calendar</a><br/>' +
-        '<button type="button" class="btn btn-ghost" id="btnCopyIcsUrl" style="margin-top:6px;">Copy feed URL</button>';
-      if (APP.hasTriedSubscribe) {
-        fb.classList.remove('hidden');
-        btnNew.classList.remove('hidden');
+      copyBtn.disabled = false;
+      rotateBtn.disabled = false;
+      subscribeBtn.disabled = false;
+      el.textContent = APP.icsUrl;
+    }
+
+    function setIcsPanelOpen(isOpen) {
+      var wrap = document.getElementById('ics-box');
+      var panel = document.getElementById('ics-panel');
+      var btn = document.getElementById('btnToggleIcsPanel');
+      if (!wrap || !panel || !btn) return;
+      if (isOpen) {
+        wrap.classList.add('open');
+        panel.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
       } else {
-        fb.classList.add('hidden');
-        btnNew.classList.add('hidden');
+        wrap.classList.remove('open');
+        panel.hidden = true;
+        btn.setAttribute('aria-expanded', 'false');
       }
-      var copyBtn = document.getElementById('btnCopyIcsUrl');
-      if (copyBtn) {
-        copyBtn.addEventListener('click', function() {
-          navigator.clipboard.writeText(APP.icsUrl).then(function() {
-            alert('Feed URL copied');
-          });
-        });
-      }
+    }
+
+    function showIcsFallbackOptions(message) {
+      var advanced = document.getElementById('ics-advanced');
+      if (advanced) advanced.open = true;
+      if (message) alert(message);
     }
 
     function loadIcs() {
@@ -776,22 +1110,28 @@
       });
     }
 
+    document.getElementById('btnCopyIcs').addEventListener('click', function() {
+      if (!APP.icsUrl) return;
+      navigator.clipboard.writeText(APP.icsUrl).then(function() {
+        alert('Feed URL copied');
+      });
+    });
+
     document.getElementById('btnSubscribeIcs').addEventListener('click', function() {
       if (!APP.icsUrl) return;
       APP.hasTriedSubscribe = true;
-      renderIcsUi();
-      var target = APP.icsWebcalUrl || APP.icsUrl;
-      try {
-        window.location.href = target;
-      } catch (_) {}
+      var subscribeUrl = APP.icsWebcalUrl || APP.icsUrl;
+      var fallbackUrl = APP.icsUrl;
+      window.location.href = subscribeUrl;
       setTimeout(function() {
         if (document.visibilityState === 'visible') {
-          window.open(APP.icsUrl, '_blank', 'noopener');
+          window.open(fallbackUrl, '_blank', 'noopener');
+          showIcsFallbackOptions('If your calendar app did not open, use Advanced options.');
         }
-      }, 500);
+      }, 900);
     });
 
-    document.getElementById('btnNewIcsLink').addEventListener('click', function() {
+    document.getElementById('btnRotateIcs').addEventListener('click', function() {
       if (!confirm('Create a new subscription link? Existing subscriptions will stop updating.')) return;
       api('rotateCalendarFeedToken', { origin: window.location.origin }).then(function(r) {
         if (!r.ok) { alert(r.error || 'Failed'); return; }
@@ -800,6 +1140,11 @@
         alert('New subscription link created. Subscribe again in your calendar app.');
         renderIcsUi();
       });
+    });
+
+    document.getElementById('btnToggleIcsPanel').addEventListener('click', function() {
+      var isOpen = this.getAttribute('aria-expanded') === 'true';
+      setIcsPanelOpen(!isOpen);
     });
 
     function shiftMonth(delta) {
@@ -813,9 +1158,46 @@
 
     document.getElementById('btnMonthPrev').addEventListener('click', function() { shiftMonth(-1); });
     document.getElementById('btnMonthNext').addEventListener('click', function() { shiftMonth(1); });
-    document.getElementById('filterMissingVote').addEventListener('change', function() {
+    document.getElementById('filterMissingVoteToggle').addEventListener('click', function() {
+      this.classList.toggle('on');
       renderDayList();
     });
+    document.getElementById('filterFullTableToggle').addEventListener('click', function() {
+      this.classList.toggle('on');
+      renderDayList();
+    });
+
+    function renderGateSessions(confirmedGames) {
+      var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      function formatLong(iso, startTime) {
+        var d = new Date(iso + 'T12:00:00Z');
+        var dayName = days[d.getUTCDay()];
+        var date = d.getUTCDate();
+        var month = months[d.getUTCMonth()];
+        var timeParts = (startTime || '18:30').split(':');
+        var hh = parseInt(timeParts[0], 10);
+        var mm = timeParts[1] || '00';
+        var ampm = hh >= 12 ? 'pm' : 'am';
+        var h12 = hh % 12 || 12;
+        return dayName + ' ' + date + ' ' + month + ', ' + h12 + ':' + mm + ampm;
+      }
+      var ghEl = document.getElementById('gate-gh-sessions');
+      var arcEl = document.getElementById('gate-arc-sessions');
+      if (!ghEl || !arcEl) return;
+      var ghItems = '';
+      var arcItems = '';
+      var now = new Date().toISOString().slice(0, 10);
+      (confirmedGames || []).forEach(function(g) {
+        if (g.date < now) return;
+        var label = formatLong(g.date, g.startTime);
+        var item = '<div class="campaign-session-item">' + esc(label) + '</div>';
+        if (g.kind === 'green_hunger') ghItems += item;
+        else if (g.kind === 'arcadia') arcItems += item;
+      });
+      ghEl.innerHTML = ghItems || '';
+      arcEl.innerHTML = arcItems || '';
+    }
 
     function resetBookingEditorState() {
       APP.editBooking = false;
@@ -1029,6 +1411,7 @@
     });
 
     function boot() {
+      setIcsPanelOpen(false);
       api('authMe', {}).then(function(r) {
         if (r.ok && r.me) {
           loginWonRace = true;
@@ -1065,6 +1448,7 @@
             var needSecret = !!(b.ok && b.requiresGroupSecret);
             if (needSecret) sw.classList.remove('hidden');
             else sw.classList.add('hidden');
+            renderGateSessions(b.confirmedGames || []);
             showGate();
           });
         }
