@@ -364,6 +364,15 @@
   .day-empty { font-size: 12px; color: var(--text-mute); padding: 16px 4px; }
   .day-row { border-bottom: 1px solid var(--border); overflow: hidden; }
   .day-row:last-child { border-bottom: none; }
+  .day-row.booked-row .day-collapsed {
+    background: rgba(46,72,50,0.14);
+    border-radius: 9px;
+    box-shadow: inset 0 0 0 1px rgba(86,128,90,0.22);
+  }
+  .day-row.booked-row.past-row .day-collapsed {
+    background: rgba(24,32,25,0.22);
+    box-shadow: inset 0 0 0 1px rgba(54,74,58,0.22);
+  }
   .day-collapsed {
     display: grid;
     grid-template-columns: 52px 1fr auto;
@@ -461,6 +470,22 @@
     border-radius: 999px; padding: 3px 7px;
     white-space: nowrap; display: inline-block;
     text-align: center; line-height: 1.4;
+  }
+  .collapsed-confirmed-tag {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #7ab880;
+    background: #182818;
+    border: 1px solid #2e5030;
+    border-radius: 999px;
+    padding: 2px 7px;
+    line-height: 1.3;
+  }
+  .day-row.past-row .collapsed-confirmed-tag {
+    color: #6f8f72;
+    background: #121b12;
+    border-color: #263a28;
   }
   .chevron {
     font-size: 11px; color: var(--text-mute);
@@ -783,10 +808,31 @@
       return warns;
     }
 
+    function parseSessionStartTs(iso, startTime) {
+      var t = String(startTime || '18:30').trim();
+      if (!/^\d{2}:\d{2}$/.test(t)) t = '18:30';
+      var dt = new Date(String(iso || '') + 'T' + t + ':00');
+      if (isNaN(dt.getTime())) dt = new Date(String(iso || '') + 'T12:00:00');
+      return dt.getTime();
+    }
+
+    function getUpcomingSessions(games) {
+      var nowTs = Date.now();
+      return (games || [])
+        .filter(function(g) {
+          if (!g || !g.date) return false;
+          return parseSessionStartTs(g.date, g.startTime) >= nowTs;
+        })
+        .slice()
+        .sort(function(a, b) {
+          return parseSessionStartTs(a.date, a.startTime) - parseSessionStartTs(b.date, b.startTime);
+        });
+    }
+
     function renderConfirmed() {
       var el = document.getElementById('confirmed-wrap');
       if (!el) return;
-      var games = APP.confirmedGames || [];
+      var games = getUpcomingSessions(APP.confirmedGames || []);
       if (!games.length) { el.innerHTML = ''; return; }
 
       var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -893,6 +939,7 @@
       var todayIso = APP.todayIso || new Date().toISOString().slice(0, 10);
       rows.forEach(function(d) {
         var booked = !!findConfirmed(d.iso);
+        var bk = booked ? findConfirmed(d.iso) : null;
         var date = new Date(d.iso + 'T12:00:00Z');
         var weekday = days[date.getUTCDay()];
         var dayNum = date.getUTCDate();
@@ -912,6 +959,7 @@
           });
           expandIndicator = '<div class="pips-grid">' + pipHtml + '</div>';
         }
+        if (booked) expandIndicator += '<span class="collapsed-confirmed-tag">Confirmed</span>';
         var partyPills = '';
         (APP.players || []).forEach(function(p) {
           var v = (d.votes && d.votes[p.id]) || '';
@@ -921,14 +969,13 @@
         });
         var expandedAction = '';
         if (booked) {
-          var bk = findConfirmed(d.iso);
           expandedAction = '<div class="confirmed-badge">✓ Confirmed' + (bk ? ' — ' + esc(bk.kindLabel || '') : '') + '</div>';
         } else {
           expandedAction = '<button type="button" class="book-btn js-book" data-iso="' + esc(d.iso) + '">Book session</button>';
         }
         var isToday = APP.todayIso && d.iso === APP.todayIso;
         var isPast = d.iso < todayIso;
-        h += '<div class="day-row' + (isToday ? ' today-row' : '') + (isPast ? ' past-row' : '') + '" data-iso="' + esc(d.iso) + '">' +
+        h += '<div class="day-row' + (isToday ? ' today-row' : '') + (isPast ? ' past-row' : '') + (booked ? ' booked-row' : '') + '" data-iso="' + esc(d.iso) + '">' +
           '<div class="day-collapsed">' +
           '<div class="day-date-col">' +
             '<div class="day-weekday">' + weekday + '</div>' +
@@ -1193,24 +1240,10 @@
       if (!ghEl || !arcEl) return;
       var ghItems = '';
       var arcItems = '';
-      var nowTs = Date.now();
-      function parseSessionTs(g) {
-        var t = String((g && g.startTime) || '18:30').trim();
-        if (!/^\d{2}:\d{2}$/.test(t)) t = '18:30';
-        var dt = new Date(String(g.date || '') + 'T' + t + ':00');
-        if (isNaN(dt.getTime())) dt = new Date(String(g.date || '') + 'T12:00:00');
-        return dt.getTime();
-      }
       function sessionId(g) {
         return String(g.date || '') + '|' + String(g.kind || '') + '|' + String((g && g.startTime) || '18:30');
       }
-      var upcoming = (confirmedGames || [])
-        .filter(function(g) {
-          if (!g || !g.date) return false;
-          return parseSessionTs(g) >= nowTs;
-        })
-        .slice()
-        .sort(function(a, b) { return parseSessionTs(a) - parseSessionTs(b); });
+      var upcoming = getUpcomingSessions(confirmedGames || []);
       var firstUpcomingId = upcoming[0] ? sessionId(upcoming[0]) : '';
       upcoming.forEach(function(g) {
         var label = formatLong(g.date, g.startTime);
