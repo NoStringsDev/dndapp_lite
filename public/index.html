@@ -338,11 +338,12 @@
 
     <div class="cal-subscribe-box" id="ics-box">
       <div style="font-weight:600;color:var(--text);margin-bottom:6px;">Calendar feed</div>
-      <div>Subscribe in Apple Calendar or Google Calendar to see confirmed sessions.</div>
-      <div id="ics-url" class="cal-url"></div>
+      <div>Subscribe to confirmed sessions you voted Yes for.</div>
+      <div id="ics-help" class="cal-url">(loading subscription link...)</div>
+      <div id="ics-fallbacks" class="cal-url hidden"></div>
       <div class="row-actions" style="margin-top:10px;">
-        <button type="button" class="btn btn-ghost" id="btnCopyIcs">Copy feed URL</button>
-        <button type="button" class="btn btn-ghost" id="btnRotateIcs">Rotate link</button>
+        <button type="button" class="btn btn-ghost" id="btnSubscribeIcs">Subscribe to calendar</button>
+        <button type="button" class="btn btn-ghost hidden" id="btnNewIcsLink">Create new subscription link</button>
       </div>
     </div>
 
@@ -411,7 +412,7 @@
 
   <script>
   (function(){
-    var APP = { dates: [], players: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, saveT: null, viewMonth: '', todayIso: '', hasScrolledToToday: false, editBooking: false, _editSnapshot: null, initialLoadPending: false };
+    var APP = { dates: [], players: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, saveT: null, viewMonth: '', todayIso: '', hasScrolledToToday: false, editBooking: false, _editSnapshot: null, initialLoadPending: false, icsUrl: '', icsWebcalUrl: '', hasTriedSubscribe: false };
 
     /** True after successful login this page load; avoids boot()'s stale authMe failing later and calling showGate(). */
     var loginWonRace = false;
@@ -723,25 +724,81 @@
       });
     }
 
+    function renderIcsUi() {
+      var help = document.getElementById('ics-help');
+      var fb = document.getElementById('ics-fallbacks');
+      var btnSub = document.getElementById('btnSubscribeIcs');
+      var btnNew = document.getElementById('btnNewIcsLink');
+      if (!APP.icsUrl) {
+        help.textContent = '(could not load subscription link)';
+        fb.classList.add('hidden');
+        btnSub.disabled = true;
+        btnNew.classList.add('hidden');
+        return;
+      }
+      btnSub.disabled = false;
+      help.textContent = APP.hasTriedSubscribe
+        ? 'If your app did not open, use one of these options:'
+        : 'Opens your preferred calendar app where supported.';
+      fb.innerHTML =
+        '<a href="' + esc(APP.icsWebcalUrl || APP.icsUrl) + '">Open calendar app (webcal)</a><br/>' +
+        '<a href="' + esc(APP.icsUrl) + '" target="_blank" rel="noopener">Open feed URL</a><br/>' +
+        '<a href="https://calendar.google.com/calendar/u/0/r/settings/addbyurl" target="_blank" rel="noopener">Google Calendar: Add by URL</a><br/>' +
+        '<a href="https://outlook.live.com/calendar/0/addcalendar" target="_blank" rel="noopener">Outlook: Add calendar</a><br/>' +
+        '<button type="button" class="btn btn-ghost" id="btnCopyIcsUrl" style="margin-top:6px;">Copy feed URL</button>';
+      if (APP.hasTriedSubscribe) {
+        fb.classList.remove('hidden');
+        btnNew.classList.remove('hidden');
+      } else {
+        fb.classList.add('hidden');
+        btnNew.classList.add('hidden');
+      }
+      var copyBtn = document.getElementById('btnCopyIcsUrl');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', function() {
+          navigator.clipboard.writeText(APP.icsUrl).then(function() {
+            alert('Feed URL copied');
+          });
+        });
+      }
+    }
+
     function loadIcs() {
       api('getCalendarFeedLinks', { origin: window.location.origin }).then(function(r) {
-        var el = document.getElementById('ics-url');
-        if (r.ok && r.url) el.textContent = r.url;
-        else el.textContent = '(could not load — try again after saving availability)';
+        if (r.ok && r.url) {
+          APP.icsUrl = r.url || '';
+          APP.icsWebcalUrl = r.webcalUrl || r.url || '';
+        } else {
+          APP.icsUrl = '';
+          APP.icsWebcalUrl = '';
+        }
+        renderIcsUi();
       });
     }
 
-    document.getElementById('btnCopyIcs').addEventListener('click', function() {
-      var t = document.getElementById('ics-url').textContent;
-      if (!t) return;
-      navigator.clipboard.writeText(t).then(function() { alert('Copied'); });
+    document.getElementById('btnSubscribeIcs').addEventListener('click', function() {
+      if (!APP.icsUrl) return;
+      APP.hasTriedSubscribe = true;
+      renderIcsUi();
+      var target = APP.icsWebcalUrl || APP.icsUrl;
+      try {
+        window.location.href = target;
+      } catch (_) {}
+      setTimeout(function() {
+        if (document.visibilityState === 'visible') {
+          window.open(APP.icsUrl, '_blank', 'noopener');
+        }
+      }, 500);
     });
-    document.getElementById('btnRotateIcs').addEventListener('click', function() {
-      if (!confirm('Rotate the calendar link? Old subscriptions will stop updating.')) return;
+
+    document.getElementById('btnNewIcsLink').addEventListener('click', function() {
+      if (!confirm('Create a new subscription link? Existing subscriptions will stop updating.')) return;
       api('rotateCalendarFeedToken', { origin: window.location.origin }).then(function(r) {
         if (!r.ok) { alert(r.error || 'Failed'); return; }
-        document.getElementById('ics-url').textContent = r.url || '';
-        alert('New link ready. Re-subscribe in your calendar app.');
+        APP.icsUrl = r.url || '';
+        APP.icsWebcalUrl = r.webcalUrl || r.url || '';
+        alert('New subscription link created. Subscribe again in your calendar app.');
+        renderIcsUi();
       });
     });
 
@@ -965,6 +1022,9 @@
       APP.viewMonth = '';
       APP.todayIso = '';
       APP.hasScrolledToToday = false;
+      APP.hasTriedSubscribe = false;
+      APP.icsUrl = '';
+      APP.icsWebcalUrl = '';
       api('logout', {}).then(function() { showGate(); });
     });
 

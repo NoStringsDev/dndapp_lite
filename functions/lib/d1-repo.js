@@ -4,6 +4,7 @@
 
 const SESSION_SCOPE_GROUP = 'group';
 const SESSION_SCOPE_MAIN = 'main';
+const SESSION_SCOPE_PLAYER = 'player';
 
 export class D1Repo {
   constructor(db) {
@@ -65,6 +66,26 @@ export class D1Repo {
       if (!allowed.has(r.date)) return;
       if (!out[r.date]) out[r.date] = {};
       out[r.date][r.player_id] = r.vote || '';
+    });
+    return out;
+  }
+
+  async getVotesForPlayerOnDates(playerId, dates) {
+    if (!playerId || !dates.length) return {};
+    const sorted = [...dates].sort();
+    const minD = sorted[0];
+    const maxD = sorted[sorted.length - 1];
+    const res = await this._db
+      .prepare(
+        'SELECT date, vote FROM votes WHERE player_id = ? AND date >= ? AND date <= ? ORDER BY date ASC'
+      )
+      .bind(playerId, minD, maxD)
+      .all();
+    const allowed = new Set(dates);
+    const out = {};
+    (res.results || []).forEach(r => {
+      if (!allowed.has(r.date)) return;
+      out[r.date] = r.vote || '';
     });
     return out;
   }
@@ -210,5 +231,10 @@ export class D1Repo {
   /** @returns {{ type: string, id: string }} */
   get scopeGroup() {
     return { type: SESSION_SCOPE_GROUP, id: SESSION_SCOPE_MAIN };
+  }
+
+  /** @returns {{ type: string, id: string }} */
+  scopePlayer(playerId) {
+    return { type: SESSION_SCOPE_PLAYER, id: String(playerId || '').trim() };
   }
 }

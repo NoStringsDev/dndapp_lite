@@ -133,10 +133,14 @@ async function route(action, payload, actor, env, repo, request) {
       );
 
     case 'getCalendarFeedLinks':
-      return requireAuth(actor, () => svc.getCalendarFeedLinks(payload, repo));
+      return requireAuth(actor, () =>
+        svc.getCalendarFeedLinks({ ...payload, playerId: actor.playerId }, repo)
+      );
 
     case 'rotateCalendarFeedToken':
-      return requireAuth(actor, () => svc.rotateCalendarFeedToken(payload, repo));
+      return requireAuth(actor, () =>
+        svc.rotateCalendarFeedToken({ ...payload, playerId: actor.playerId }, repo)
+      );
 
     case 'getSingleEventCalendarIcs':
       return svc.getSingleEventCalendarIcs(payload, repo);

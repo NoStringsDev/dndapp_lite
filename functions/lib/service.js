@@ -120,8 +120,9 @@ function webcalUrlFromHttp(url) {
   return String(url || '').replace(/^https?:\/\//, 'webcal://');
 }
 
-async function ensureFeedToken(repo) {
-  const sc = repo.scopeGroup;
+async function ensureFeedToken(repo, playerId) {
+  const sc = repo.scopePlayer(playerId);
+  if (!sc.id) throw new Error('Missing player scope for feed token.');
   let existing = await repo.getActiveCalendarFeedToken(sc.type, sc.id);
   if (existing) return existing;
   const token = createCalendarToken();
@@ -129,8 +130,9 @@ async function ensureFeedToken(repo) {
   return token;
 }
 
-async function rotateFeedToken(repo) {
-  const sc = repo.scopeGroup;
+async function rotateFeedToken(repo, playerId) {
+  const sc = repo.scopePlayer(playerId);
+  if (!sc.id) throw new Error('Missing player scope for feed token.');
   await repo.deactivateCalendarFeedTokens(sc.type, sc.id, new Date().toISOString());
   const token = createCalendarToken();
   await repo.createCalendarFeedToken(token, sc.type, sc.id, new Date().toISOString());
@@ -357,7 +359,9 @@ export async function unconfirmSession(payload, repo) {
 export async function getCalendarFeedLinks(payload, repo) {
   try {
     const origin = String(payload?.origin || '').trim();
-    const token = await ensureFeedToken(repo);
+    const playerId = String(payload?.playerId || '').trim();
+    if (!playerId) return { ok: false, error: 'Not authenticated.' };
+    const token = await ensureFeedToken(repo, playerId);
     const url = calendarUrlForToken(origin, token);
     return {
       ok: true,
@@ -373,7 +377,9 @@ export async function getCalendarFeedLinks(payload, repo) {
 export async function rotateCalendarFeedToken(payload, repo) {
   try {
     const origin = String(payload?.origin || '').trim();
-    const token = await rotateFeedToken(repo);
+    const playerId = String(payload?.playerId || '').trim();
+    if (!playerId) return { ok: false, error: 'Not authenticated.' };
+    const token = await rotateFeedToken(repo, playerId);
     const url = calendarUrlForToken(origin, token);
     return {
       ok: true,
@@ -386,10 +392,14 @@ export async function rotateCalendarFeedToken(payload, repo) {
   }
 }
 
-async function buildGroupFeedEvents(repo) {
+async function buildPlayerFeedEvents(repo, playerId) {
   const today = isoDateInTimeZone(new Date(), TZ);
   const bookings = await repo.listBookingsFrom(today);
-  return bookings.map(b => {
+  const bookingDates = bookings.map(b => b.date);
+  const myVotes = await repo.getVotesForPlayerOnDates(playerId, bookingDates);
+  return bookings
+    .filter(b => (myVotes[b.date] || '') === 'available')
+    .map(b => {
     const when = parseSessionTimes(b.date, b.startTime, b.endTime);
     const summary = kindLabel(b.kind);
     const desc = [kindLabel(b.kind), b.location ? `Where: ${b.location}` : '']
@@ -403,16 +413,16 @@ async function buildGroupFeedEvents(repo) {
       description: desc,
       location: b.location || '',
     };
-  });
+    });
 }
 
 export async function getCalendarFeedIcsByToken(token, repo) {
   try {
     const row = await repo.getCalendarFeedScopeByToken(String(token || '').trim());
     if (!row) return { ok: false, error: 'not found' };
-    if (row.scopeType !== 'group' || row.scopeId !== 'main') return { ok: false, error: 'unsupported' };
-    const events = await buildGroupFeedEvents(repo);
-    const ics = buildIcsCalendar(events, 'Party — confirmed sessions');
+    if (row.scopeType !== 'player' || !row.scopeId) return { ok: false, error: 'unsupported' };
+    const events = await buildPlayerFeedEvents(repo, row.scopeId);
+    const ics = buildIcsCalendar(events, 'Paralleleers Sessions');
     return { ok: true, ics };
   } catch (err) {
     return { ok: false, error: String(err) };
