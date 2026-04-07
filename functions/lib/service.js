@@ -144,10 +144,30 @@ function kindLabel(kind) {
   return 'The Green Hunger';
 }
 
+function mapBookingsToConfirmedGames(bookings, nameById) {
+  return (bookings || []).map(b => ({
+    date: b.date,
+    label: formatDateLabel(b.date),
+    dayLabel: formatDayLabel(b.date),
+    kind: b.kind,
+    kindLabel: kindLabel(b.kind),
+    startTime: b.startTime,
+    endTime: b.endTime,
+    location: b.location,
+    attendees: (b.attendeePlayerIds || []).map(id => ({ id, displayName: nameById[id] || id })),
+    sessionTime: `${b.startTime}–${b.endTime}`,
+  }));
+}
+
 export async function getPublicBootstrap(repo, env) {
   const players = await repo.listActivePlayers();
   const requiresGroupSecret = Boolean(String(env?.GROUP_SECRET || '').trim());
-  return { ok: true, players, requiresGroupSecret };
+  const today = isoDateInTimeZone(new Date(), TZ);
+  const rangeStart = addDaysLondon(today, -ROLLING_PAST_DAYS);
+  const bookings = await repo.listBookingsFrom(rangeStart);
+  const nameById = Object.fromEntries(players.map(p => [p.id, p.displayName]));
+  const confirmedGames = mapBookingsToConfirmedGames(bookings, nameById);
+  return { ok: true, players, requiresGroupSecret, confirmedGames };
 }
 
 export async function login(payload, env, repo) {
@@ -211,18 +231,7 @@ async function buildAppPayload(repo, playerId) {
   const nameById = Object.fromEntries(players.map(p => [p.id, p.displayName]));
   const me = await repo.getPlayerById(playerId);
 
-  const confirmedGames = bookings.map(b => ({
-    date: b.date,
-    label: formatDateLabel(b.date),
-    dayLabel: formatDayLabel(b.date),
-    kind: b.kind,
-    kindLabel: kindLabel(b.kind),
-    startTime: b.startTime,
-    endTime: b.endTime,
-    location: b.location,
-    attendees: (b.attendeePlayerIds || []).map(id => ({ id, displayName: nameById[id] || id })),
-    sessionTime: `${b.startTime}–${b.endTime}`,
-  }));
+  const confirmedGames = mapBookingsToConfirmedGames(bookings, nameById);
 
   const datesPayload = dates.map(iso => ({
     iso,
