@@ -144,8 +144,14 @@
   .campaign-card.arc .campaign-card-name { color: #e8e0ff; }
   .campaign-sessions { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
   .campaign-session-item { font-size: 11px; letter-spacing: 0.02em; line-height: 1.4; }
+  .campaign-session-item.next-upcoming {
+    font-size: 12px;
+    font-weight: 700;
+  }
   .campaign-card.gh .campaign-session-item { color: rgba(220,245,225,0.88); }
+  .campaign-card.gh .campaign-session-item.next-upcoming { color: rgba(235,255,240,0.98); }
   .campaign-card.arc .campaign-session-item { color: rgba(220,210,255,0.88); }
+  .campaign-card.arc .campaign-session-item.next-upcoming { color: rgba(235,226,255,0.98); }
   .gate-player-section { padding: 24px 16px 0; }
   .gate-register-label {
     font-family: var(--font-serif);
@@ -1187,11 +1193,29 @@
       if (!ghEl || !arcEl) return;
       var ghItems = '';
       var arcItems = '';
-      var now = new Date().toISOString().slice(0, 10);
-      (confirmedGames || []).forEach(function(g) {
-        if (g.date < now) return;
+      var nowTs = Date.now();
+      function parseSessionTs(g) {
+        var t = String((g && g.startTime) || '18:30').trim();
+        if (!/^\d{2}:\d{2}$/.test(t)) t = '18:30';
+        var dt = new Date(String(g.date || '') + 'T' + t + ':00');
+        if (isNaN(dt.getTime())) dt = new Date(String(g.date || '') + 'T12:00:00');
+        return dt.getTime();
+      }
+      function sessionId(g) {
+        return String(g.date || '') + '|' + String(g.kind || '') + '|' + String((g && g.startTime) || '18:30');
+      }
+      var upcoming = (confirmedGames || [])
+        .filter(function(g) {
+          if (!g || !g.date) return false;
+          return parseSessionTs(g) >= nowTs;
+        })
+        .slice()
+        .sort(function(a, b) { return parseSessionTs(a) - parseSessionTs(b); });
+      var firstUpcomingId = upcoming[0] ? sessionId(upcoming[0]) : '';
+      upcoming.forEach(function(g) {
         var label = formatLong(g.date, g.startTime);
-        var item = '<div class="campaign-session-item">' + esc(label) + '</div>';
+        var cls = 'campaign-session-item' + (sessionId(g) === firstUpcomingId ? ' next-upcoming' : '');
+        var item = '<div class="' + cls + '">' + esc(label) + '</div>';
         if (g.kind === 'green_hunger') ghItems += item;
         else if (g.kind === 'arcadia') arcItems += item;
       });
