@@ -147,7 +147,24 @@ function kindLabel(kind) {
 export async function getPublicBootstrap(repo, env) {
   const players = await repo.listActivePlayers();
   const requiresGroupSecret = Boolean(String(env?.GROUP_SECRET || '').trim());
-  return { ok: true, players, requiresGroupSecret };
+
+  const today = isoDateInTimeZone(new Date(), TZ);
+  const bookings = await repo.listBookingsFrom(today);
+  const nameById = Object.fromEntries(players.map(p => [p.id, p.displayName]));
+  const confirmedGames = bookings.map(b => ({
+    date: b.date,
+    label: formatDateLabel(b.date),
+    dayLabel: formatDayLabel(b.date),
+    kind: b.kind,
+    kindLabel: kindLabel(b.kind),
+    startTime: b.startTime,
+    endTime: b.endTime,
+    location: b.location,
+    attendees: (b.attendeePlayerIds || []).map(id => ({ id, displayName: nameById[id] || id })),
+    sessionTime: `${b.startTime}–${b.endTime}`,
+  }));
+
+  return { ok: true, players, requiresGroupSecret, confirmedGames };
 }
 
 export async function login(payload, env, repo) {
