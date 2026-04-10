@@ -420,7 +420,7 @@ async function buildPlayerFeedEvents(repo, playerId) {
   const bookingDates = bookings.map(b => b.date);
   const myVotes = await repo.getVotesForPlayerOnDates(playerId, bookingDates);
   return bookings
-    .filter(b => (myVotes[b.date] || '') === 'available')
+    .filter(b => (myVotes[b.date] || '') === 'available' || (b.attendeePlayerIds || []).includes(playerId))
     .map(b => {
     const when = parseSessionTimes(b.date, b.startTime, b.endTime);
     const summary = kindLabel(b.kind);
