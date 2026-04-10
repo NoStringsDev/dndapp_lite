@@ -731,9 +731,85 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
+        cache: 'no-store',
         body: JSON.stringify({ action: action, payload: payload || {} })
       }).then(function(r){ return r.json(); });
     }
+
+    /** Latest campaign cards / player list / secret field when showing the login gate (not used while signed in). */
+    function populateGateFromBootstrap(b) {
+      var picker = document.getElementById('playerPicker');
+      var prevSel = document.getElementById('playerSel').value;
+      if (b.ok && b.players) {
+        var sortedPlayers = b.players.slice().sort(function(a, z) {
+          return String(a.displayName || '').localeCompare(String(z.displayName || ''), undefined, { sensitivity: 'base' });
+        });
+        var idSet = {};
+        sortedPlayers.forEach(function(p) { idSet[p.id] = true; });
+        picker.innerHTML = '';
+        sortedPlayers.forEach(function(p) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'player-choice';
+          btn.textContent = p.displayName;
+          btn.setAttribute('data-id', p.id);
+          btn.setAttribute('aria-pressed', 'false');
+          btn.addEventListener('click', function() {
+            setSelectedPlayer(p.id);
+          });
+          picker.appendChild(btn);
+        });
+        var keep = prevSel && idSet[prevSel] ? prevSel : (sortedPlayers[0] ? sortedPlayers[0].id : '');
+        setSelectedPlayer(keep);
+      } else {
+        picker.innerHTML = '<span style="font-size:0.85rem;color:var(--text-dim);">No players configured</span>';
+        setSelectedPlayer('');
+      }
+      var sw = document.getElementById('secretWrap');
+      var needSecret = !!(b.ok && b.requiresGroupSecret);
+      if (needSecret) sw.classList.remove('hidden');
+      else sw.classList.add('hidden');
+      renderGateSessions(b.confirmedGames || []);
+    }
+
+    function refreshGateFromServer() {
+      if (loginWonRace) return;
+      api('getPublicBootstrap', {}).then(function(b) {
+        if (loginWonRace) return;
+        populateGateFromBootstrap(b);
+      }).catch(function() {});
+    }
+
+    var _lastResumeDataFetch = 0;
+    function throttledResumeDataFetch() {
+      var now = Date.now();
+      if (now - _lastResumeDataFetch < 1200) return;
+      _lastResumeDataFetch = now;
+      if (loginWonRace) loadAppData();
+    }
+
+    var _gateWasHidden = false;
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'hidden') {
+        _gateWasHidden = true;
+        return;
+      }
+      if (document.visibilityState !== 'visible' || !_gateWasHidden) return;
+      _gateWasHidden = false;
+      var onGate = !document.getElementById('gate').classList.contains('hidden');
+      if (onGate && !loginWonRace) refreshGateFromServer();
+      else if (!onGate && loginWonRace) throttledResumeDataFetch();
+    });
+
+    window.addEventListener('pageshow', function(ev) {
+      if (!ev.persisted) return;
+      var onGate = !document.getElementById('gate').classList.contains('hidden');
+      if (onGate) {
+        location.reload();
+        return;
+      }
+      if (loginWonRace) throttledResumeDataFetch();
+    });
 
     function showGate() {
       document.getElementById('gate').classList.remove('hidden');
@@ -1458,13 +1534,11 @@
     });
 
     document.getElementById('btnLogout').addEventListener('click', function() {
-      APP.viewMonth = '';
-      APP.todayIso = '';
-      APP.hasScrolledToToday = false;
-      APP.hasTriedSubscribe = false;
-      APP.icsUrl = '';
-      APP.icsWebcalUrl = '';
-      api('logout', {}).then(function() { showGate(); });
+      api('logout', {}).then(function() {
+        location.reload();
+      }).catch(function() {
+        location.reload();
+      });
     });
 
     function boot() {
@@ -1478,34 +1552,7 @@
         } else if (!loginWonRace) {
           api('getPublicBootstrap', {}).then(function(b) {
             if (loginWonRace) return;
-            var picker = document.getElementById('playerPicker');
-            if (b.ok && b.players) {
-              var sortedPlayers = b.players.slice().sort(function(a, z) {
-                return String(a.displayName || '').localeCompare(String(z.displayName || ''), undefined, { sensitivity: 'base' });
-              });
-              picker.innerHTML = '';
-              sortedPlayers.forEach(function(p) {
-                var btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'player-choice';
-                btn.textContent = p.displayName;
-                btn.setAttribute('data-id', p.id);
-                btn.setAttribute('aria-pressed', 'false');
-                btn.addEventListener('click', function() {
-                  setSelectedPlayer(p.id);
-                });
-                picker.appendChild(btn);
-              });
-              setSelectedPlayer(sortedPlayers[0] ? sortedPlayers[0].id : '');
-            } else {
-              picker.innerHTML = '<span style="font-size:0.85rem;color:var(--text-dim);">No players configured</span>';
-              setSelectedPlayer('');
-            }
-            var sw = document.getElementById('secretWrap');
-            var needSecret = !!(b.ok && b.requiresGroupSecret);
-            if (needSecret) sw.classList.remove('hidden');
-            else sw.classList.add('hidden');
-            renderGateSessions(b.confirmedGames || []);
+            populateGateFromBootstrap(b);
             showGate();
           });
         }
