@@ -143,10 +143,19 @@
   .campaign-card.gh .campaign-card-name { color: #e8f8e8; }
   .campaign-card.arc .campaign-card-name { color: #e8e0ff; }
   .campaign-sessions { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
-  .campaign-session-item { font-size: 11px; letter-spacing: 0.02em; line-height: 1.4; }
+  .campaign-session-item {
+    font-size: 11px; letter-spacing: 0.02em; line-height: 1.4;
+    text-align: left; background: transparent; border: none; padding: 0;
+    font-family: var(--font-sans); cursor: pointer;
+  }
   .campaign-session-item.next-upcoming {
     font-size: 12px;
     font-weight: 700;
+  }
+  .campaign-session-item:hover { text-decoration: underline; }
+  .campaign-session-hint {
+    font-size: 10px; color: rgba(220,210,195,0.7); margin-top: 4px;
+    letter-spacing: 0.02em;
   }
   .campaign-card.gh .campaign-session-item { color: rgba(220,245,225,0.88); }
   .campaign-card.gh .campaign-session-item.next-upcoming { color: rgba(235,255,240,0.98); }
@@ -531,6 +540,9 @@
     letter-spacing: 0.14em; text-transform: uppercase;
     text-align: center; font-weight: 600;
   }
+  button.confirmed-badge { cursor: pointer; }
+  button.confirmed-badge:hover { border-color: #4a5e3f; color: #80bf7d; }
+  .day-row.booked-row .day-date-col { cursor: pointer; }
   .sheet-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.65);
     display: none; align-items: flex-end; justify-content: center;
@@ -716,7 +728,7 @@
 
   <script>
   (function(){
-    var APP = { dates: [], players: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, saveT: null, viewMonth: '', todayIso: '', hasScrolledToToday: false, editBooking: false, _editSnapshot: null, initialLoadPending: false, icsUrl: '', icsWebcalUrl: '', hasTriedSubscribe: false };
+    var APP = { dates: [], players: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, pendingDetailIso: null, saveT: null, viewMonth: '', todayIso: '', hasScrolledToToday: false, editBooking: false, _editSnapshot: null, initialLoadPending: false, icsUrl: '', icsWebcalUrl: '', hasTriedSubscribe: false };
 
     /** True after successful login this page load; avoids boot()'s stale authMe failing later and calling showGate(). */
     var loginWonRace = false;
@@ -950,7 +962,7 @@
 
       el.querySelectorAll('.session-card').forEach(function(card) {
         card.addEventListener('click', function() {
-          openBookingEditor(this.getAttribute('data-iso'));
+          openDetail(this.getAttribute('data-iso'));
         });
       });
     }
@@ -1045,7 +1057,8 @@
         });
         var expandedAction = '';
         if (booked) {
-          expandedAction = '<div class="confirmed-badge">✓ Confirmed' + (bk ? ' — ' + esc(bk.kindLabel || '') : '') + '</div>';
+          var bk = findConfirmed(d.iso);
+          expandedAction = '<button type="button" class="confirmed-badge js-booking-detail" data-iso="' + esc(d.iso) + '">✓ Confirmed' + (bk ? ' — ' + esc(bk.kindLabel || '') : '') + '</button>';
         } else {
           expandedAction = '<button type="button" class="book-btn js-book" data-iso="' + esc(d.iso) + '">Book session</button>';
         }
@@ -1053,7 +1066,7 @@
         var isPast = d.iso < todayIso;
         h += '<div class="day-row' + (isToday ? ' today-row' : '') + (isPast ? ' past-row' : '') + (booked ? ' booked-row' : '') + '" data-iso="' + esc(d.iso) + '">' +
           '<div class="day-collapsed">' +
-          '<div class="day-date-col">' +
+          '<div class="day-date-col js-day-date" data-iso="' + esc(d.iso) + '">' +
             '<div class="day-weekday">' + weekday + '</div>' +
             '<div class="day-num">' + dayNum + '</div>' +
             '<div class="day-month-label">' + monthLabel + '</div>' +
@@ -1102,6 +1115,20 @@
         btn.addEventListener('click', function(e) {
           e.stopPropagation();
           openConfirm(this.getAttribute('data-iso'));
+        });
+      });
+      el.querySelectorAll('.js-booking-detail').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openDetail(this.getAttribute('data-iso'));
+        });
+      });
+      el.querySelectorAll('.js-day-date').forEach(function(col) {
+        col.addEventListener('click', function(e) {
+          var row = this.closest('.day-row');
+          if (!row || !row.classList.contains('booked-row')) return;
+          e.stopPropagation();
+          openDetail(this.getAttribute('data-iso'));
         });
       });
       if (!APP.hasScrolledToToday && APP.todayIso) {
@@ -1324,12 +1351,22 @@
       upcoming.forEach(function(g) {
         var label = formatLong(g.date, g.startTime);
         var cls = 'campaign-session-item' + (sessionId(g) === firstUpcomingId ? ' next-upcoming' : '');
-        var item = '<div class="' + cls + '">' + esc(label) + '</div>';
+        var item = '<button type="button" class="' + cls + ' js-gate-session" data-iso="' + esc(g.date) + '">' + esc(label) + '</button>';
         if (g.kind === 'green_hunger') ghItems += item;
         else if (g.kind === 'arcadia') arcItems += item;
       });
-      ghEl.innerHTML = ghItems || '';
-      arcEl.innerHTML = arcItems || '';
+      ghEl.innerHTML = ghItems ? ghItems + '<div class="campaign-session-hint">Tap a session to edit or cancel</div>' : '';
+      arcEl.innerHTML = arcItems ? arcItems + '<div class="campaign-session-hint">Tap a session to edit or cancel</div>' : '';
+      document.querySelectorAll('.js-gate-session').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          APP.pendingDetailIso = this.getAttribute('data-iso');
+          var loginBtn = document.getElementById('btnLogin');
+          if (loginBtn) {
+            loginBtn.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            loginBtn.focus();
+          }
+        });
+      });
     }
 
     function resetBookingEditorState() {
@@ -1488,9 +1525,11 @@
       body += (c.attendees || []).map(function(a){ return esc(a.displayName); }).join(', ');
       document.getElementById('detBody').innerHTML = body;
       document.getElementById('sheet-detail').classList.add('open');
+      document.getElementById('sheet-detail').setAttribute('aria-hidden', 'false');
     }
     document.getElementById('detClose').addEventListener('click', function() {
       document.getElementById('sheet-detail').classList.remove('open');
+      document.getElementById('sheet-detail').setAttribute('aria-hidden', 'true');
     });
     document.getElementById('detEdit').addEventListener('click', function() {
       if (DET_ISO) openBookingEditor(DET_ISO);
@@ -1512,6 +1551,7 @@
         if (!r.ok) { alert(r.error || 'Failed'); return; }
         mergeApp(r);
         document.getElementById('sheet-detail').classList.remove('open');
+        document.getElementById('sheet-detail').setAttribute('aria-hidden', 'true');
       });
     });
 
@@ -1529,7 +1569,12 @@
         loginWonRace = true;
         showApp();
         if (r.me) document.getElementById('dispName').textContent = r.me.displayName || '';
-        loadAppData();
+        loadAppData().then(function() {
+          if (APP.pendingDetailIso) {
+            openDetail(APP.pendingDetailIso);
+            APP.pendingDetailIso = null;
+          }
+        });
       });
     });
 
@@ -1548,7 +1593,12 @@
           loginWonRace = true;
           document.getElementById('dispName').textContent = r.me.displayName || '';
           showApp();
-          loadAppData();
+          loadAppData().then(function() {
+            if (APP.pendingDetailIso) {
+              openDetail(APP.pendingDetailIso);
+              APP.pendingDetailIso = null;
+            }
+          });
         } else if (!loginWonRace) {
           api('getPublicBootstrap', {}).then(function(b) {
             if (loginWonRace) return;
