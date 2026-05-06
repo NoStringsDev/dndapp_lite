@@ -577,32 +577,7 @@
       <div class="gate-welcome">
         <div class="gate-welcome-title">Welcome, Parralleer</div>
       </div>
-      <div class="campaign-cards">
-        <div class="campaign-card gh">
-          <div class="campaign-card-bg">
-            <img src="https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&q=80&fit=crop&crop=center" alt="The Green Hunger" onerror="this.style.display='none'"/>
-          </div>
-          <div class="campaign-card-filter"></div>
-          <div class="campaign-card-scrim"></div>
-          <div class="campaign-card-content">
-            <div class="campaign-card-tag gh">Current campaign</div>
-            <div class="campaign-card-name">The Green Hunger</div>
-            <div class="campaign-sessions" id="gate-gh-sessions"></div>
-          </div>
-        </div>
-        <div class="campaign-card arc">
-          <div class="campaign-card-bg">
-            <img src="https://images.unsplash.com/photo-1465101162946-4377e57745c3?w=800&q=80&fit=crop&crop=center" alt="Arcadia" onerror="this.style.display='none'"/>
-          </div>
-          <div class="campaign-card-filter"></div>
-          <div class="campaign-card-scrim"></div>
-          <div class="campaign-card-content">
-            <div class="campaign-card-tag arc">Also playing</div>
-            <div class="campaign-card-name">Arcadia</div>
-            <div class="campaign-sessions" id="gate-arc-sessions"></div>
-          </div>
-        </div>
-      </div>
+      <div class="campaign-cards" id="gate-campaign-cards"></div>
       <div class="gate-player-section">
         <div class="field hidden" id="secretWrap">
           <label for="secret">Group secret</label>
@@ -656,6 +631,27 @@
           </details>
         </div>
       </div>
+      <div class="cal-sync-wrap" id="campaign-admin">
+        <button
+          type="button"
+          class="cal-sync-toggle"
+          id="btnToggleCampaignPanel"
+          aria-expanded="false"
+          aria-controls="campaign-panel"
+        >
+          <span>
+            <span class="cal-sync-title">Campaign management</span>
+            <span class="cal-sync-hint">Set current campaign, park/archive, and edit details</span>
+          </span>
+          <span class="cal-sync-chevron">&#8964;</span>
+        </button>
+        <div class="cal-sync-panel" id="campaign-panel" hidden>
+          <div class="cal-feed-btns" style="margin-bottom:10px;">
+            <button type="button" class="small-btn" id="btnCampaignAdd">Add campaign</button>
+          </div>
+          <div id="campaign-admin-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+        </div>
+      </div>
       <div class="month-nav">
         <button type="button" class="month-nav-btn" id="btnMonthPrev" aria-label="Previous month">&#8249;</button>
         <span id="monthLabel" class="month-nav-title"></span>
@@ -682,10 +678,7 @@
       <div id="confirmVoteSummary" class="field" style="font-size:0.8rem;color:var(--text-dim);"></div>
       <div class="field">
         <label for="cfKind">Session</label>
-        <select id="cfKind">
-          <option value="green_hunger">The Green Hunger (full party)</option>
-          <option value="arcadia">Arcadia</option>
-        </select>
+        <select id="cfKind"></select>
       </div>
       <div class="field" style="display:flex;gap:10px;">
         <div style="flex:1;">
@@ -728,7 +721,7 @@
 
   <script>
   (function(){
-    var APP = { dates: [], players: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, pendingDetailIso: null, saveT: null, viewMonth: '', todayIso: '', hasScrolledToToday: false, editBooking: false, _editSnapshot: null, initialLoadPending: false, icsUrl: '', icsWebcalUrl: '', hasTriedSubscribe: false };
+    var APP = { dates: [], players: [], campaigns: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, pendingDetailIso: null, saveT: null, viewMonth: '', todayIso: '', hasScrolledToToday: false, editBooking: false, _editSnapshot: null, initialLoadPending: false, icsUrl: '', icsWebcalUrl: '', hasTriedSubscribe: false };
 
     /** True after successful login this page load; avoids boot()'s stale authMe failing later and calling showGate(). */
     var loginWonRace = false;
@@ -781,7 +774,8 @@
       var needSecret = !!(b.ok && b.requiresGroupSecret);
       if (needSecret) sw.classList.remove('hidden');
       else sw.classList.add('hidden');
-      renderGateSessions(b.confirmedGames || []);
+      APP.campaigns = (b.campaigns || []).slice();
+      renderGateSessions(APP.campaigns, b.confirmedGames || []);
     }
 
     function refreshGateFromServer() {
@@ -845,6 +839,18 @@
       return '—';
     }
 
+    function campaignById(id) {
+      return (APP.campaigns || []).find(function(c) { return c.id === id; }) || null;
+    }
+
+    function getBookableCampaigns() {
+      return (APP.campaigns || []).filter(function(c) { return c.status === 'active'; });
+    }
+
+    function selectedCampaign() {
+      return campaignById(document.getElementById('cfKind').value);
+    }
+
     function distinctMonths(dates) {
       var m = {};
       (dates || []).forEach(function(d) { m[d.iso.slice(0, 7)] = true; });
@@ -878,11 +884,13 @@
       return v === '' || v === 'maybe' || v === 'unavailable';
     }
 
-    function collectBookingWarnings(kind, iso, attendeeIds) {
+    function collectBookingWarnings(campaignId, iso, attendeeIds) {
       var d = findDateEntry(iso);
       if (!d || !d.votes) return [];
       var warns = [];
-      var ids = kind === 'green_hunger'
+      var campaign = campaignById(campaignId);
+      var isFullParty = campaign && campaign.attendanceMode === 'full_party';
+      var ids = isFullParty
         ? (APP.players || []).map(function(p) { return p.id; })
         : attendeeIds.slice();
       ids.forEach(function(id) {
@@ -925,41 +933,34 @@
 
       var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
       var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
       function longDate(iso) {
         var d = new Date(iso + 'T12:00:00Z');
         return days[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + months[d.getUTCMonth()];
       }
 
-      var GH_IMG = 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=600&q=75&fit=crop&crop=center';
-      var ARC_IMG = 'https://images.unsplash.com/photo-1465101162946-4377e57745c3?w=600&q=75&fit=crop&crop=center';
-
       var h = '<div class="section-label">Confirmed sessions</div><div class="confirmed-list">';
-
       games.forEach(function(g) {
-        var isGH = g.kind === 'green_hunger';
-        var img = isGH ? GH_IMG : ARC_IMG;
-        var kindClass = isGH ? 'gh' : 'arc';
-        var kindLabel = isGH ? 'The Green Hunger' : 'Arcadia';
+        var campaign = campaignById(g.campaignId) || g.campaign || {};
+        var kindClass = campaign.accentKey === 'gh' ? 'gh' : 'arc';
+        var img = campaign.cardImageUrl || (kindClass === 'gh'
+          ? 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=600&q=75&fit=crop&crop=center'
+          : 'https://images.unsplash.com/photo-1465101162946-4377e57745c3?w=600&q=75&fit=crop&crop=center');
+        var label = campaign.name || g.kindLabel || 'Campaign';
         var attendees = (g.attendees || []).map(function(a) {
-          return '<span class="chip' + (isGH ? '' : ' arc') + '">' + esc(a.displayName) + '</span>';
+          return '<span class="chip' + (kindClass === 'gh' ? '' : ' arc') + '">' + esc(a.displayName) + '</span>';
         }).join('');
-
         h += '<div class="session-card ' + kindClass + '" data-iso="' + esc(g.date) + '" role="button" tabindex="0">' +
-          '<div class="session-card-bg"><img src="' + img + '" alt="' + kindLabel + '" onerror="this.parentElement.style.background=\'' + (isGH ? '#1a2a1a' : '#12101e') + '\'"/></div>' +
+          '<div class="session-card-bg"><img src="' + esc(img) + '" alt="' + esc(label) + '" onerror="this.parentElement.style.background=\'#1a1a1a\'"/></div>' +
           '<div class="session-card-scrim"></div>' +
           '<div class="session-card-content">' +
-            '<div class="session-campaign-tag ' + kindClass + '">' + esc(kindLabel) + '</div>' +
+            '<div class="session-campaign-tag ' + kindClass + '">' + esc(label) + '</div>' +
             '<div class="session-date-large">' + esc(longDate(g.date)) + '</div>' +
             '<div class="session-time-text">' + esc(g.startTime || '') + ' – ' + esc(g.endTime || '') + '</div>' +
             '<div class="session-chips">' + attendees + '</div>' +
-          '</div>' +
-        '</div>';
+          '</div></div>';
       });
-
       h += '</div>';
       el.innerHTML = h;
-
       el.querySelectorAll('.session-card').forEach(function(card) {
         card.addEventListener('click', function() {
           openDetail(this.getAttribute('data-iso'));
@@ -1178,6 +1179,7 @@
     function mergeApp(r) {
       if (r.dates) APP.dates = r.dates;
       if (r.confirmedGames) APP.confirmedGames = r.confirmedGames;
+      if (r.campaigns) APP.campaigns = r.campaigns;
       if (r.players) APP.players = r.players;
       if (r.fullTableDates) APP.fullTableDates = r.fullTableDates;
       if (r.arcadiaDefaultLocation) APP.arcadiaDefaultLocation = r.arcadiaDefaultLocation;
@@ -1186,6 +1188,8 @@
       ensureViewMonth();
       renderConfirmed();
       renderDayList();
+      renderCampaignAdmin();
+      renderGateSessions(APP.campaigns || [], APP.confirmedGames || []);
       if (!APP.hasScrolledToToday && APP.todayIso) {
         APP.hasScrolledToToday = true;
         requestAnimationFrame(function() {
@@ -1303,6 +1307,113 @@
       setIcsPanelOpen(!isOpen);
     });
 
+    function setCampaignPanelOpen(isOpen) {
+      var wrap = document.getElementById('campaign-admin');
+      var panel = document.getElementById('campaign-panel');
+      var btn = document.getElementById('btnToggleCampaignPanel');
+      if (!wrap || !panel || !btn) return;
+      if (isOpen) {
+        wrap.classList.add('open');
+        panel.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+      } else {
+        wrap.classList.remove('open');
+        panel.hidden = true;
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    }
+
+    function renderCampaignAdmin() {
+      var list = document.getElementById('campaign-admin-list');
+      if (!list) return;
+      var campaigns = (APP.campaigns || []).slice();
+      if (!campaigns.length) {
+        list.innerHTML = '<div class="cal-sync-note">No campaigns configured.</div>';
+        return;
+      }
+      var h = '';
+      campaigns.forEach(function(c) {
+        h += '<div style="border:1px solid var(--border);border-radius:10px;padding:10px;">' +
+          '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">' +
+            '<strong>' + esc(c.name || 'Campaign') + '</strong>' +
+            '<span style="font-size:11px;color:var(--text-mute);">' + esc(c.status || 'active') + (c.isCurrent ? ' · current' : '') + '</span>' +
+          '</div>' +
+          (c.tagline ? ('<div style="font-size:12px;color:var(--text-dim);margin-top:4px;">' + esc(c.tagline) + '</div>') : '') +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">' +
+            (c.status === 'active' ? '<button type="button" class="small-btn js-camp-current" data-id="' + esc(c.id) + '">Set current</button>' : '') +
+            (c.status !== 'active' ? '<button type="button" class="small-btn js-camp-active" data-id="' + esc(c.id) + '">Activate</button>' : '') +
+            (c.status !== 'parked' ? '<button type="button" class="small-btn js-camp-park" data-id="' + esc(c.id) + '">Park</button>' : '') +
+            (c.status !== 'archived' ? '<button type="button" class="small-btn js-camp-archive" data-id="' + esc(c.id) + '">Archive</button>' : '') +
+            '<button type="button" class="small-btn js-camp-edit" data-id="' + esc(c.id) + '">Edit</button>' +
+          '</div>' +
+        '</div>';
+      });
+      list.innerHTML = h;
+
+      list.querySelectorAll('.js-camp-current').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          api('setCurrentCampaign', { id: this.getAttribute('data-id') }).then(function(r) {
+            if (!r.ok) { alert(r.error || 'Failed'); return; }
+            mergeApp(r);
+          });
+        });
+      });
+      list.querySelectorAll('.js-camp-active').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          api('setCampaignStatus', { id: this.getAttribute('data-id'), status: 'active' }).then(function(r) {
+            if (!r.ok) { alert(r.error || 'Failed'); return; }
+            mergeApp(r);
+          });
+        });
+      });
+      list.querySelectorAll('.js-camp-park').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          api('setCampaignStatus', { id: this.getAttribute('data-id'), status: 'parked' }).then(function(r) {
+            if (!r.ok) { alert(r.error || 'Failed'); return; }
+            mergeApp(r);
+          });
+        });
+      });
+      list.querySelectorAll('.js-camp-archive').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          if (!confirm('Archive this campaign?')) return;
+          api('setCampaignStatus', { id: this.getAttribute('data-id'), status: 'archived' }).then(function(r) {
+            if (!r.ok) { alert(r.error || 'Failed'); return; }
+            mergeApp(r);
+          });
+        });
+      });
+      list.querySelectorAll('.js-camp-edit').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var id = this.getAttribute('data-id');
+          var existing = campaignById(id);
+          if (!existing) return;
+          var name = prompt('Campaign name', existing.name || '');
+          if (!name) return;
+          var tagline = prompt('Tagline', existing.tagline || '') || '';
+          api('updateCampaign', { id: id, name: name, tagline: tagline }).then(function(r) {
+            if (!r.ok) { alert(r.error || 'Failed'); return; }
+            mergeApp(r);
+          });
+        });
+      });
+    }
+
+    document.getElementById('btnToggleCampaignPanel').addEventListener('click', function() {
+      var isOpen = this.getAttribute('aria-expanded') === 'true';
+      setCampaignPanelOpen(!isOpen);
+    });
+    document.getElementById('btnCampaignAdd').addEventListener('click', function() {
+      var name = prompt('New campaign name');
+      if (!name) return;
+      var tagline = prompt('Tagline (optional)') || '';
+      api('createCampaign', { name: name, tagline: tagline, status: 'active' }).then(function(r) {
+        if (!r.ok) { alert(r.error || 'Failed'); return; }
+        mergeApp(r);
+        setCampaignPanelOpen(true);
+      });
+    });
+
     function shiftMonth(delta) {
       var months = distinctMonths(APP.dates || []);
       var idx = months.indexOf(APP.viewMonth);
@@ -1323,7 +1434,7 @@
       renderDayList();
     });
 
-    function renderGateSessions(confirmedGames) {
+    function renderGateSessions(campaigns, confirmedGames) {
       var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
       var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
       function formatLong(iso, startTime) {
@@ -1338,25 +1449,37 @@
         var h12 = hh % 12 || 12;
         return dayName + ' ' + date + ' ' + month + ', ' + h12 + ':' + mm + ampm;
       }
-      var ghEl = document.getElementById('gate-gh-sessions');
-      var arcEl = document.getElementById('gate-arc-sessions');
-      if (!ghEl || !arcEl) return;
-      var ghItems = '';
-      var arcItems = '';
+      var wrap = document.getElementById('gate-campaign-cards');
+      if (!wrap) return;
+      var activeAndParked = (campaigns || []).filter(function(c) { return c.status !== 'archived'; });
+      var html = '';
       function sessionId(g) {
         return String(g.date || '') + '|' + String(g.kind || '') + '|' + String((g && g.startTime) || '18:30');
       }
       var upcoming = getUpcomingSessions(confirmedGames || []);
       var firstUpcomingId = upcoming[0] ? sessionId(upcoming[0]) : '';
-      upcoming.forEach(function(g) {
+      activeAndParked.forEach(function(c) {
+        var items = '';
+        upcoming.filter(function(g) { return g.campaignId === c.id; }).forEach(function(g) {
         var label = formatLong(g.date, g.startTime);
         var cls = 'campaign-session-item' + (sessionId(g) === firstUpcomingId ? ' next-upcoming' : '');
-        var item = '<button type="button" class="' + cls + ' js-gate-session" data-iso="' + esc(g.date) + '">' + esc(label) + '</button>';
-        if (g.kind === 'green_hunger') ghItems += item;
-        else if (g.kind === 'arcadia') arcItems += item;
+        items += '<button type="button" class="' + cls + ' js-gate-session" data-iso="' + esc(g.date) + '">' + esc(label) + '</button>';
       });
-      ghEl.innerHTML = ghItems ? ghItems + '<div class="campaign-session-hint">Tap a session to edit or cancel</div>' : '';
-      arcEl.innerHTML = arcItems ? arcItems + '<div class="campaign-session-hint">Tap a session to edit or cancel</div>' : '';
+        var accent = c.accentKey === 'gh' ? 'gh' : 'arc';
+        var statusTag = c.isCurrent ? 'Current campaign' : (c.status === 'parked' ? 'Parked' : 'Also playing');
+        html += '<div class="campaign-card ' + accent + '">' +
+          '<div class="campaign-card-bg">' +
+            (c.cardImageUrl ? '<img src="' + esc(c.cardImageUrl) + '" alt="' + esc(c.name || 'Campaign') + '" onerror="this.style.display=\'none\'"/>' : '') +
+          '</div>' +
+          '<div class="campaign-card-filter"></div><div class="campaign-card-scrim"></div>' +
+          '<div class="campaign-card-content">' +
+            '<div class="campaign-card-tag ' + accent + '">' + esc(statusTag) + '</div>' +
+            '<div class="campaign-card-name">' + esc(c.name || 'Campaign') + '</div>' +
+            (items ? ('<div class="campaign-sessions">' + items + '</div><div class="campaign-session-hint">Tap a session to edit or cancel</div>') : '') +
+          '</div>' +
+        '</div>';
+      });
+      wrap.innerHTML = html;
       document.querySelectorAll('.js-gate-session').forEach(function(btn) {
         btn.addEventListener('click', function() {
           APP.pendingDetailIso = this.getAttribute('data-iso');
@@ -1375,6 +1498,17 @@
       document.getElementById('cfSave').textContent = 'Confirm';
     }
 
+    function renderCampaignOptions(selectedId) {
+      var sel = document.getElementById('cfKind');
+      var options = getBookableCampaigns();
+      var html = options.map(function(c) {
+        return '<option value="' + esc(c.id) + '">' + esc(c.name) + (c.isCurrent ? ' (Current)' : '') + '</option>';
+      }).join('');
+      sel.innerHTML = html;
+      if (selectedId && options.some(function(c) { return c.id === selectedId; })) sel.value = selectedId;
+      else if (options[0]) sel.value = options[0].id;
+    }
+
     function openConfirm(iso) {
       resetBookingEditorState();
       APP.pendingIso = iso;
@@ -1387,10 +1521,11 @@
         vs += '<div>' + esc(p.displayName) + ': <strong>' + esc(voteLabel(v)) + '</strong></div>';
       });
       document.getElementById('confirmVoteSummary').innerHTML = vs;
-      document.getElementById('cfKind').value = 'green_hunger';
-      document.getElementById('cfStart').value = '18:30';
-      document.getElementById('cfEnd').value = '22:00';
-      document.getElementById('cfLoc').value = '';
+      renderCampaignOptions();
+      var sel = selectedCampaign();
+      document.getElementById('cfStart').value = (sel && sel.defaultStartTime) || '18:30';
+      document.getElementById('cfEnd').value = (sel && sel.defaultEndTime) || '22:00';
+      document.getElementById('cfLoc').value = (sel && sel.defaultLocation) || '';
       document.getElementById('cfErr').style.display = 'none';
       syncKindUi();
       document.getElementById('cfKind').onchange = function() {
@@ -1406,8 +1541,8 @@
       if (!c) return;
       APP.pendingIso = iso;
       APP.editBooking = true;
-      APP._editSnapshot = c.kind === 'arcadia'
-        ? { arcadiaAttendeeIds: (c.attendees || []).map(function(a) { return a.id; }) }
+      APP._editSnapshot = c && c.campaign && c.campaign.attendanceMode === 'select_players'
+        ? { attendeeIds: (c.attendees || []).map(function(a) { return a.id; }) }
         : null;
       document.getElementById('confirmTitle').textContent = 'Edit session — ' + c.dayLabel + ', ' + c.label;
       document.getElementById('cfSave').textContent = 'Save changes';
@@ -1420,7 +1555,7 @@
         });
       }
       document.getElementById('confirmVoteSummary').innerHTML = vs;
-      document.getElementById('cfKind').value = c.kind;
+      renderCampaignOptions(c.campaignId);
       document.getElementById('cfStart').value = c.startTime || '18:30';
       document.getElementById('cfEnd').value = c.endTime || '22:00';
       document.getElementById('cfLoc').value = c.location || '';
@@ -1438,28 +1573,23 @@
     var GH_LOC_DEFAULT = 'Online / home';
 
     function syncKindUi() {
-      var kind = document.getElementById('cfKind').value;
+      var campaign = selectedCampaign();
       var loc = document.getElementById('cfLoc');
       var v = loc.value.trim();
-      var arc = (APP.arcadiaDefaultLocation || '').trim();
-      if (kind === 'arcadia') {
-        if (!v || v === GH_LOC_DEFAULT) loc.value = arc;
-      } else {
-        if (!v || (arc && v === arc)) loc.value = GH_LOC_DEFAULT;
-      }
+      if (!v && campaign && campaign.defaultLocation) loc.value = campaign.defaultLocation;
       var att = document.getElementById('cfAtt');
       var html = '';
-      var isGh = kind === 'green_hunger';
+      var fullParty = campaign && campaign.attendanceMode === 'full_party';
       var snap = APP._editSnapshot;
       (APP.players || []).forEach(function(p) {
         var d = findDateEntry(APP.pendingIso);
         var vv = d && d.votes ? (d.votes[p.id] || '') : '';
-        var dis = isGh ? ' disabled' : '';
+        var dis = fullParty ? ' disabled' : '';
         var checked;
-        if (isGh) {
+        if (fullParty) {
           checked = true;
-        } else if (snap && snap.arcadiaAttendeeIds) {
-          checked = snap.arcadiaAttendeeIds.indexOf(p.id) !== -1;
+        } else if (snap && snap.attendeeIds) {
+          checked = snap.attendeeIds.indexOf(p.id) !== -1;
         } else {
           checked = (vv === 'available' || vv === 'maybe');
         }
@@ -1478,7 +1608,8 @@
     });
     document.getElementById('cfSave').addEventListener('click', function() {
       var iso = APP.pendingIso;
-      var kind = document.getElementById('cfKind').value;
+      var campaign = selectedCampaign();
+      var campaignId = campaign ? campaign.id : '';
       var start = document.getElementById('cfStart').value;
       var end = document.getElementById('cfEnd').value;
       var loc = document.getElementById('cfLoc').value.trim();
@@ -1488,7 +1619,7 @@
       });
       var err = document.getElementById('cfErr');
       err.style.display = 'none';
-      var warns = collectBookingWarnings(kind, iso, ids);
+      var warns = collectBookingWarnings(campaignId, iso, ids);
       if (warns.length) {
         var msg = 'Some players have not voted Yes, or voted Maybe/No, or have no vote:\n\n' + warns.join('\n') +
           '\n\nBook this session anyway?';
@@ -1496,7 +1627,8 @@
       }
       var payload = {
         date: iso,
-        kind: kind,
+        campaignId: campaignId,
+        kind: campaign ? (campaign.slug || '') : '',
         startTime: start,
         endTime: end,
         location: loc,
@@ -1588,6 +1720,7 @@
 
     function boot() {
       setIcsPanelOpen(false);
+      setCampaignPanelOpen(false);
       api('authMe', {}).then(function(r) {
         if (r.ok && r.me) {
           loginWonRace = true;

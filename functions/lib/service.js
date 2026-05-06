@@ -139,13 +139,61 @@ async function rotateFeedToken(repo, playerId) {
   return token;
 }
 
-function kindLabel(kind) {
-  if (kind === 'arcadia') return 'Arcadia session';
-  return 'The Green Hunger';
+function statusRank(status) {
+  if (status === 'active') return 0;
+  if (status === 'parked') return 1;
+  return 2;
 }
 
-function normaliseSessionKind(kind) {
-  return kind === 'arcadia' ? 'arcadia' : 'green_hunger';
+function sortCampaigns(campaigns) {
+  return [...(campaigns || [])].sort((a, b) => {
+    if (!!a.isCurrent !== !!b.isCurrent) return a.isCurrent ? -1 : 1;
+    const rankDelta = statusRank(a.status) - statusRank(b.status);
+    if (rankDelta !== 0) return rankDelta;
+    const sortDelta = (a.sortOrder || 0) - (b.sortOrder || 0);
+    if (sortDelta !== 0) return sortDelta;
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
+}
+
+function campaignLabel(campaign) {
+  return campaign?.name || 'Unknown campaign';
+}
+
+function normaliseCampaignStatus(status) {
+  if (status === 'parked' || status === 'archived') return status;
+  return 'active';
+}
+
+function normaliseAttendanceMode(mode) {
+  return mode === 'full_party' ? 'full_party' : 'select_players';
+}
+
+function campaignKindCompat(campaign) {
+  return campaign?.slug || 'green_hunger';
+}
+
+function fallbackCampaignForBooking(booking) {
+  if (booking?.kind === 'arcadia') {
+    return {
+      id: 'camp_arcadia',
+      slug: 'arcadia',
+      name: 'Arcadia',
+      attendanceMode: 'select_players',
+      defaultStartTime: '18:30',
+      defaultEndTime: '22:00',
+      defaultLocation: '',
+    };
+  }
+  return {
+    id: 'camp_green_hunger',
+    slug: 'green_hunger',
+    name: 'The Green Hunger',
+    attendanceMode: 'full_party',
+    defaultStartTime: '18:30',
+    defaultEndTime: '22:00',
+    defaultLocation: '',
+  };
 }
 
 function normaliseTime(value, fallback) {
@@ -153,21 +201,25 @@ function normaliseTime(value, fallback) {
   return /^\d{2}:\d{2}$/.test(t) ? t : fallback;
 }
 
-function toConfirmedGames(bookings, nameById) {
+function toConfirmedGames(bookings, nameById, campaignById) {
   return (bookings || []).map(b => {
-    const kind = normaliseSessionKind(b.kind);
+    const campaign = campaignById[b.campaignId] || fallbackCampaignForBooking(b);
+    const kind = campaignKindCompat(campaign);
     const startTime = normaliseTime(b.startTime, '18:30');
     const endTime = normaliseTime(b.endTime, '22:00');
     return {
       date: b.date,
       label: formatDateLabel(b.date),
       dayLabel: formatDayLabel(b.date),
+      campaignId: b.campaignId || '',
+      campaignName: campaignLabel(campaign),
       kind,
-      kindLabel: kindLabel(kind),
+      kindLabel: campaignLabel(campaign),
       startTime,
       endTime,
       location: b.location || '',
       attendees: (b.attendeePlayerIds || []).map(id => ({ id, displayName: nameById[id] || id })),
+      campaign: campaign || null,
       sessionTime: `${startTime}–${endTime}`,
     };
   });
@@ -175,12 +227,14 @@ function toConfirmedGames(bookings, nameById) {
 
 export async function getPublicBootstrap(repo, env) {
   const players = await repo.listActivePlayers();
+  const campaigns = sortCampaigns(await repo.listCampaigns());
   const requiresGroupSecret = Boolean(String(env?.GROUP_SECRET || '').trim());
   const today = isoDateInTimeZone(new Date(), TZ);
   const bookings = await repo.listBookingsFrom(today);
   const nameById = Object.fromEntries(players.map(p => [p.id, p.displayName]));
-  const confirmedGames = toConfirmedGames(bookings, nameById);
-  return { ok: true, players, requiresGroupSecret, confirmedGames };
+  const campaignById = Object.fromEntries(campaigns.map(c => [c.id, c]));
+  const confirmedGames = toConfirmedGames(bookings, nameById, campaignById);
+  return { ok: true, players, campaigns, requiresGroupSecret, confirmedGames };
 }
 
 export async function login(payload, env, repo) {
@@ -226,6 +280,7 @@ export async function authMe(sessionId, repo) {
 
 async function buildAppPayload(repo, playerId) {
   const players = await repo.listActivePlayers();
+  const campaigns = sortCampaigns(await repo.listCampaigns());
   const dates = rollingDateIsos();
   const votesByDate = await repo.getAllVotesForDates(dates);
   const myVotes = await repo.getVotesForPlayer(playerId);
@@ -244,7 +299,8 @@ async function buildAppPayload(repo, playerId) {
   const nameById = Object.fromEntries(players.map(p => [p.id, p.displayName]));
   const me = await repo.getPlayerById(playerId);
 
-  const confirmedGames = toConfirmedGames(bookings, nameById);
+  const campaignById = Object.fromEntries(campaigns.map(c => [c.id, c]));
+  const confirmedGames = toConfirmedGames(bookings, nameById, campaignById);
 
   const datesPayload = dates.map(iso => ({
     iso,
@@ -258,6 +314,7 @@ async function buildAppPayload(repo, playerId) {
   return {
     me: me ? { id: me.id, displayName: me.displayName } : null,
     players,
+    campaigns,
     dates: datesPayload,
     fullTableDates,
     confirmedGames,
@@ -265,7 +322,6 @@ async function buildAppPayload(repo, playerId) {
     todayIso: today,
     defaultStart: '18:30',
     defaultEnd: '22:00',
-    arcadiaDefaultLocation: 'Arcadia Games, 46 Essex St, Temple, London WC2R 3JF',
   };
 }
 
@@ -312,17 +368,23 @@ export async function confirmSession(payload, repo) {
     const playerId = String(payload?.playerId || '').trim();
     if (!playerId) return { ok: false, error: 'Not authenticated.' };
     const date = String(payload?.date || '').trim();
+    const campaignId = String(payload?.campaignId || '').trim();
     const kind = String(payload?.kind || '').trim();
-    const startTime = String(payload?.startTime || '18:30').trim();
-    const endTime = String(payload?.endTime || '22:00').trim();
-    const location = String(payload?.location ?? '').trim();
     let attendeeIds = Array.isArray(payload?.attendeePlayerIds) ? payload.attendeePlayerIds.map(String) : [];
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: 'Invalid date.' };
-    if (kind !== 'green_hunger' && kind !== 'arcadia') return { ok: false, error: 'Invalid session kind.' };
 
     const players = await repo.listActivePlayers();
     const activeIds = players.map(p => p.id);
+    const campaigns = await repo.listCampaigns();
+    const selected = campaigns.find(c => c.id === campaignId)
+      || campaigns.find(c => c.slug === kind)
+      || null;
+    if (!selected) return { ok: false, error: 'Unknown campaign.' };
+    if (selected.status !== 'active') return { ok: false, error: 'Only active campaigns can be booked.' };
+    const startTime = normaliseTime(payload?.startTime, selected.defaultStartTime || '18:30');
+    const endTime = normaliseTime(payload?.endTime, selected.defaultEndTime || '22:00');
+    const location = String(payload?.location ?? '').trim() || String(selected.defaultLocation || '').trim();
 
     const existing = await repo.getBooking(date);
     const replaceExisting = Boolean(payload?.replaceExisting);
@@ -333,11 +395,11 @@ export async function confirmSession(payload, repo) {
       return { ok: false, error: 'No booking to update on that date.' };
     }
 
-    if (kind === 'green_hunger') {
+    if (selected.attendanceMode === 'full_party') {
       attendeeIds = [...activeIds];
     } else {
       attendeeIds = attendeeIds.filter(id => activeIds.includes(id));
-      if (attendeeIds.length < 1) return { ok: false, error: 'Pick at least one player for Arcadia.' };
+      if (attendeeIds.length < 1) return { ok: false, error: 'Pick at least one player.' };
     }
 
     const createdAt = existing && replaceExisting ? existing.createdAt : new Date().toISOString();
@@ -346,7 +408,8 @@ export async function confirmSession(payload, repo) {
 
     await repo.upsertBooking({
       date,
-      kind,
+      kind: selected.slug,
+      campaignId: selected.id,
       startTime,
       endTime,
       location,
@@ -357,6 +420,125 @@ export async function confirmSession(payload, repo) {
 
     const data = await buildAppPayload(repo, playerId);
     return { ok: true, ...data };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+function slugifyCampaignName(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 50) || 'campaign';
+}
+
+function randomCampaignId() {
+  return `camp_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+async function ensureCurrentCampaign(repo) {
+  const campaigns = sortCampaigns(await repo.listCampaigns());
+  const active = campaigns.filter(c => c.status === 'active');
+  if (!active.length) return;
+  if (active.some(c => c.isCurrent)) return;
+  await repo.setCurrentCampaign(active[0].id);
+}
+
+export async function createCampaign(payload, repo) {
+  try {
+    const name = String(payload?.name || '').trim();
+    if (!name) return { ok: false, error: 'Name is required.' };
+    const status = normaliseCampaignStatus(payload?.status);
+    const now = new Date().toISOString();
+    const row = {
+      id: randomCampaignId(),
+      slug: slugifyCampaignName(payload?.slug || name),
+      name,
+      tagline: String(payload?.tagline || '').trim(),
+      status,
+      isCurrent: Boolean(payload?.isCurrent) && status === 'active',
+      sortOrder: Number(payload?.sortOrder || 0) || 0,
+      cardImageUrl: String(payload?.cardImageUrl || '').trim(),
+      accentKey: String(payload?.accentKey || '').trim(),
+      defaultStartTime: normaliseTime(payload?.defaultStartTime, '18:30'),
+      defaultEndTime: normaliseTime(payload?.defaultEndTime, '22:00'),
+      defaultLocation: String(payload?.defaultLocation || '').trim(),
+      attendanceMode: normaliseAttendanceMode(payload?.attendanceMode),
+      createdAt: now,
+      updatedAt: now,
+    };
+    await repo.createCampaign(row);
+    if (row.isCurrent) await repo.setCurrentCampaign(row.id);
+    await ensureCurrentCampaign(repo);
+    return { ok: true, ...(await buildAppPayload(repo, payload.playerId)) };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+export async function updateCampaign(payload, repo) {
+  try {
+    const id = String(payload?.id || '').trim();
+    if (!id) return { ok: false, error: 'Campaign id is required.' };
+    const existing = await repo.getCampaignById(id);
+    if (!existing) return { ok: false, error: 'Campaign not found.' };
+    const status = normaliseCampaignStatus(payload?.status ?? existing.status);
+    const row = {
+      ...existing,
+      id,
+      slug: slugifyCampaignName(payload?.slug || existing.slug || payload?.name || existing.name),
+      name: String(payload?.name ?? existing.name).trim(),
+      tagline: String(payload?.tagline ?? existing.tagline).trim(),
+      status,
+      sortOrder: Number(payload?.sortOrder ?? existing.sortOrder) || 0,
+      cardImageUrl: String(payload?.cardImageUrl ?? existing.cardImageUrl).trim(),
+      accentKey: String(payload?.accentKey ?? existing.accentKey).trim(),
+      defaultStartTime: normaliseTime(payload?.defaultStartTime ?? existing.defaultStartTime, '18:30'),
+      defaultEndTime: normaliseTime(payload?.defaultEndTime ?? existing.defaultEndTime, '22:00'),
+      defaultLocation: String(payload?.defaultLocation ?? existing.defaultLocation).trim(),
+      attendanceMode: normaliseAttendanceMode(payload?.attendanceMode ?? existing.attendanceMode),
+      updatedAt: new Date().toISOString(),
+    };
+    await repo.updateCampaign(row);
+    if (payload?.isCurrent && row.status === 'active') await repo.setCurrentCampaign(id);
+    if (row.status !== 'active' && existing.isCurrent) {
+      const next = (await repo.listBookableCampaigns())[0];
+      if (next?.id) await repo.setCurrentCampaign(next.id);
+    }
+    await ensureCurrentCampaign(repo);
+    return { ok: true, ...(await buildAppPayload(repo, payload.playerId)) };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+export async function setCurrentCampaign(payload, repo) {
+  try {
+    const id = String(payload?.id || '').trim();
+    if (!id) return { ok: false, error: 'Campaign id is required.' };
+    const campaign = await repo.getCampaignById(id);
+    if (!campaign) return { ok: false, error: 'Campaign not found.' };
+    if (campaign.status !== 'active') return { ok: false, error: 'Only active campaigns can be current.' };
+    await repo.setCurrentCampaign(id);
+    return { ok: true, ...(await buildAppPayload(repo, payload.playerId)) };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+export async function setCampaignStatus(payload, repo) {
+  try {
+    const id = String(payload?.id || '').trim();
+    if (!id) return { ok: false, error: 'Campaign id is required.' };
+    const status = normaliseCampaignStatus(payload?.status);
+    const existing = await repo.getCampaignById(id);
+    if (!existing) return { ok: false, error: 'Campaign not found.' };
+    await repo.setCampaignStatus(id, status, new Date().toISOString());
+    if (status !== 'active' && existing.isCurrent) await ensureCurrentCampaign(repo);
+    if (status === 'active' && (payload?.makeCurrent || false)) await repo.setCurrentCampaign(id);
+    await ensureCurrentCampaign(repo);
+    return { ok: true, ...(await buildAppPayload(repo, payload.playerId)) };
   } catch (err) {
     return { ok: false, error: String(err) };
   }
@@ -417,18 +599,20 @@ export async function rotateCalendarFeedToken(payload, repo) {
 async function buildPlayerFeedEvents(repo, playerId) {
   const today = isoDateInTimeZone(new Date(), TZ);
   const bookings = await repo.listBookingsFrom(today);
+  const campaignById = Object.fromEntries((await repo.listCampaigns()).map(c => [c.id, c]));
   const bookingDates = bookings.map(b => b.date);
   const myVotes = await repo.getVotesForPlayerOnDates(playerId, bookingDates);
   return bookings
     .filter(b => (myVotes[b.date] || '') === 'available' || (b.attendeePlayerIds || []).includes(playerId))
     .map(b => {
     const when = parseSessionTimes(b.date, b.startTime, b.endTime);
-    const summary = kindLabel(b.kind);
-    const desc = [kindLabel(b.kind), b.location ? `Where: ${b.location}` : '']
+    const campaign = campaignById[b.campaignId] || fallbackCampaignForBooking(b);
+    const summary = campaignLabel(campaign);
+    const desc = [campaignLabel(campaign), b.location ? `Where: ${b.location}` : '']
       .filter(Boolean)
       .join('\\n');
     return {
-      uid: `bk-${b.date}-${b.kind}@${ICS_DOMAIN}`,
+      uid: `bk-${b.date}-${campaignKindCompat(campaign)}@${ICS_DOMAIN}`,
       startIso: when.startIso,
       endIso: when.endIso,
       summary,
@@ -457,14 +641,15 @@ export async function getSingleEventCalendarIcs(payload, repo) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: 'Invalid date.' };
     const b = await repo.getBooking(date);
     if (!b) return { ok: false, error: 'No booking on that date.' };
+    const campaign = (b.campaignId && await repo.getCampaignById(b.campaignId)) || fallbackCampaignForBooking(b);
     const when = parseSessionTimes(b.date, b.startTime, b.endTime);
-    const summary = kindLabel(b.kind);
+    const summary = campaignLabel(campaign);
     const events = [{
-      uid: `single-${b.date}-${b.kind}@${ICS_DOMAIN}`,
+      uid: `single-${b.date}-${campaignKindCompat(campaign)}@${ICS_DOMAIN}`,
       startIso: when.startIso,
       endIso: when.endIso,
       summary,
-      description: kindLabel(b.kind),
+      description: campaignLabel(campaign),
       location: b.location || '',
     }];
     return { ok: true, ics: buildIcsCalendar(events, summary) };
