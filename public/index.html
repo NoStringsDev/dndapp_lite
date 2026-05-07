@@ -800,7 +800,7 @@
           });
           picker.appendChild(btn);
         });
-        var keep = prevSel && idSet[prevSel] ? prevSel : (sortedPlayers[0] ? sortedPlayers[0].id : '');
+        var keep = prevSel && idSet[prevSel] ? prevSel : '';
         setSelectedPlayer(keep);
       } else {
         picker.innerHTML = '<span style="font-size:0.85rem;color:var(--text-dim);">No players configured</span>';
