@@ -83,6 +83,13 @@ export class D1Repo {
       sortOrder: row.sort_order || 0,
       cardImageUrl: row.card_image_url || '',
       accentKey: row.accent_key || '',
+      themeMode: row.theme_mode || 'auto',
+      accentColor: row.accent_color || '#7ab880',
+      accentSoftColor: row.accent_soft_color || 'rgba(122,184,128,0.18)',
+      textOnAccent: row.text_on_accent || '#e8f8e8',
+      overlayColor: row.overlay_color || 'rgba(0,0,0,0.70)',
+      borderColor: row.border_color || '#2e5030',
+      pillColor: row.pill_color || 'rgba(255,255,255,0.10)',
       defaultStartTime: row.default_start_time || '18:30',
       defaultEndTime: row.default_end_time || '22:00',
       defaultLocation: row.default_location || '',
@@ -95,7 +102,7 @@ export class D1Repo {
   async listCampaigns() {
     const res = await this._db
       .prepare(
-        "SELECT id, slug, name, tagline, status, is_current, sort_order, card_image_url, accent_key, default_start_time, default_end_time, default_location, attendance_mode, created_at, updated_at FROM campaigns ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'parked' THEN 1 ELSE 2 END ASC, is_current DESC, sort_order ASC, name ASC"
+        "SELECT id, slug, name, tagline, status, is_current, sort_order, card_image_url, accent_key, theme_mode, accent_color, accent_soft_color, text_on_accent, overlay_color, border_color, pill_color, default_start_time, default_end_time, default_location, attendance_mode, created_at, updated_at FROM campaigns ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'parked' THEN 1 ELSE 2 END ASC, is_current DESC, sort_order ASC, name ASC"
       )
       .all();
     return (res.results || []).map(r => this._mapCampaign(r));
@@ -104,7 +111,7 @@ export class D1Repo {
   async listBookableCampaigns() {
     const res = await this._db
       .prepare(
-        "SELECT id, slug, name, tagline, status, is_current, sort_order, card_image_url, accent_key, default_start_time, default_end_time, default_location, attendance_mode, created_at, updated_at FROM campaigns WHERE status = 'active' ORDER BY is_current DESC, sort_order ASC, name ASC"
+        "SELECT id, slug, name, tagline, status, is_current, sort_order, card_image_url, accent_key, theme_mode, accent_color, accent_soft_color, text_on_accent, overlay_color, border_color, pill_color, default_start_time, default_end_time, default_location, attendance_mode, created_at, updated_at FROM campaigns WHERE status = 'active' ORDER BY is_current DESC, sort_order ASC, name ASC"
       )
       .all();
     return (res.results || []).map(r => this._mapCampaign(r));
@@ -113,7 +120,7 @@ export class D1Repo {
   async getCampaignById(id) {
     const row = await this._db
       .prepare(
-        'SELECT id, slug, name, tagline, status, is_current, sort_order, card_image_url, accent_key, default_start_time, default_end_time, default_location, attendance_mode, created_at, updated_at FROM campaigns WHERE id = ?'
+        'SELECT id, slug, name, tagline, status, is_current, sort_order, card_image_url, accent_key, theme_mode, accent_color, accent_soft_color, text_on_accent, overlay_color, border_color, pill_color, default_start_time, default_end_time, default_location, attendance_mode, created_at, updated_at FROM campaigns WHERE id = ?'
       )
       .bind(id)
       .first();
@@ -123,7 +130,7 @@ export class D1Repo {
   async createCampaign(row) {
     await this._db
       .prepare(
-        'INSERT INTO campaigns (id, slug, name, tagline, status, is_current, sort_order, card_image_url, accent_key, default_start_time, default_end_time, default_location, attendance_mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO campaigns (id, slug, name, tagline, status, is_current, sort_order, card_image_url, accent_key, theme_mode, accent_color, accent_soft_color, text_on_accent, overlay_color, border_color, pill_color, default_start_time, default_end_time, default_location, attendance_mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
       )
       .bind(
         row.id,
@@ -135,6 +142,13 @@ export class D1Repo {
         row.sortOrder || 0,
         row.cardImageUrl || '',
         row.accentKey || '',
+        row.themeMode || 'auto',
+        row.accentColor || '#7ab880',
+        row.accentSoftColor || 'rgba(122,184,128,0.18)',
+        row.textOnAccent || '#e8f8e8',
+        row.overlayColor || 'rgba(0,0,0,0.70)',
+        row.borderColor || '#2e5030',
+        row.pillColor || 'rgba(255,255,255,0.10)',
         row.defaultStartTime || '18:30',
         row.defaultEndTime || '22:00',
         row.defaultLocation || '',
@@ -148,7 +162,7 @@ export class D1Repo {
   async updateCampaign(row) {
     await this._db
       .prepare(
-        'UPDATE campaigns SET slug = ?, name = ?, tagline = ?, status = ?, sort_order = ?, card_image_url = ?, accent_key = ?, default_start_time = ?, default_end_time = ?, default_location = ?, attendance_mode = ?, updated_at = ? WHERE id = ?'
+        'UPDATE campaigns SET slug = ?, name = ?, tagline = ?, status = ?, sort_order = ?, card_image_url = ?, accent_key = ?, theme_mode = ?, accent_color = ?, accent_soft_color = ?, text_on_accent = ?, overlay_color = ?, border_color = ?, pill_color = ?, default_start_time = ?, default_end_time = ?, default_location = ?, attendance_mode = ?, updated_at = ? WHERE id = ?'
       )
       .bind(
         row.slug,
@@ -158,6 +172,13 @@ export class D1Repo {
         row.sortOrder || 0,
         row.cardImageUrl || '',
         row.accentKey || '',
+        row.themeMode || 'auto',
+        row.accentColor || '#7ab880',
+        row.accentSoftColor || 'rgba(122,184,128,0.18)',
+        row.textOnAccent || '#e8f8e8',
+        row.overlayColor || 'rgba(0,0,0,0.70)',
+        row.borderColor || '#2e5030',
+        row.pillColor || 'rgba(255,255,255,0.10)',
         row.defaultStartTime || '18:30',
         row.defaultEndTime || '22:00',
         row.defaultLocation || '',

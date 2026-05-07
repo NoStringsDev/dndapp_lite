@@ -173,6 +173,16 @@ function campaignKindCompat(campaign) {
   return campaign?.slug || 'green_hunger';
 }
 
+function normaliseHexColor(value, fallback) {
+  const v = String(value || '').trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
+  return fallback;
+}
+
+function normaliseThemeMode(value) {
+  return value === 'manual' ? 'manual' : 'auto';
+}
+
 function fallbackCampaignForBooking(booking) {
   if (booking?.kind === 'arcadia') {
     return {
@@ -183,6 +193,13 @@ function fallbackCampaignForBooking(booking) {
       defaultStartTime: '18:30',
       defaultEndTime: '22:00',
       defaultLocation: '',
+      themeMode: 'auto',
+      accentColor: '#b8a8ff',
+      accentSoftColor: 'rgba(184,168,255,0.18)',
+      textOnAccent: '#e8e0ff',
+      overlayColor: 'rgba(24,18,48,0.62)',
+      borderColor: '#4c4388',
+      pillColor: 'rgba(184,168,255,0.14)',
     };
   }
   return {
@@ -193,6 +210,13 @@ function fallbackCampaignForBooking(booking) {
     defaultStartTime: '18:30',
     defaultEndTime: '22:00',
     defaultLocation: '',
+    themeMode: 'auto',
+    accentColor: '#7ab880',
+    accentSoftColor: 'rgba(122,184,128,0.18)',
+    textOnAccent: '#e8f8e8',
+    overlayColor: 'rgba(18,24,18,0.62)',
+    borderColor: '#2e5030',
+    pillColor: 'rgba(122,184,128,0.14)',
   };
 }
 
@@ -472,6 +496,13 @@ export async function createCampaign(payload, repo) {
       sortOrder: Number(payload?.sortOrder || 0) || 0,
       cardImageUrl: String(payload?.cardImageUrl || '').trim(),
       accentKey: String(payload?.accentKey || '').trim(),
+      themeMode: normaliseThemeMode(payload?.themeMode),
+      accentColor: normaliseHexColor(payload?.accentColor, '#7ab880'),
+      accentSoftColor: String(payload?.accentSoftColor || 'rgba(122,184,128,0.18)').trim(),
+      textOnAccent: normaliseHexColor(payload?.textOnAccent, '#e8f8e8'),
+      overlayColor: String(payload?.overlayColor || 'rgba(0,0,0,0.70)').trim(),
+      borderColor: normaliseHexColor(payload?.borderColor, '#2e5030'),
+      pillColor: String(payload?.pillColor || 'rgba(255,255,255,0.10)').trim(),
       defaultStartTime: normaliseTime(payload?.defaultStartTime, '18:30'),
       defaultEndTime: normaliseTime(payload?.defaultEndTime, '22:00'),
       defaultLocation: String(payload?.defaultLocation || '').trim(),
@@ -505,6 +536,13 @@ export async function updateCampaign(payload, repo) {
       sortOrder: Number(payload?.sortOrder ?? existing.sortOrder) || 0,
       cardImageUrl: String(payload?.cardImageUrl ?? existing.cardImageUrl).trim(),
       accentKey: String(payload?.accentKey ?? existing.accentKey).trim(),
+      themeMode: normaliseThemeMode(payload?.themeMode ?? existing.themeMode),
+      accentColor: normaliseHexColor(payload?.accentColor ?? existing.accentColor, '#7ab880'),
+      accentSoftColor: String(payload?.accentSoftColor ?? existing.accentSoftColor).trim(),
+      textOnAccent: normaliseHexColor(payload?.textOnAccent ?? existing.textOnAccent, '#e8f8e8'),
+      overlayColor: String(payload?.overlayColor ?? existing.overlayColor).trim(),
+      borderColor: normaliseHexColor(payload?.borderColor ?? existing.borderColor, '#2e5030'),
+      pillColor: String(payload?.pillColor ?? existing.pillColor).trim(),
       defaultStartTime: normaliseTime(payload?.defaultStartTime ?? existing.defaultStartTime, '18:30'),
       defaultEndTime: normaliseTime(payload?.defaultEndTime ?? existing.defaultEndTime, '22:00'),
       defaultLocation: String(payload?.defaultLocation ?? existing.defaultLocation).trim(),
