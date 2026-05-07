@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campaign UI Preview</title>
+  <style>
+    :root {
+      --bg: #0f0d0b;
+      --card: #171410;
+      --raised: #1d1916;
+      --border: #2d251d;
+      --text: #e2dbd0;
+      --muted: #9b8d7f;
+      --green: #86c28e;
+      --purple: #b8a8ff;
+      --gold: #d4a464;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background: #080706;
+      color: var(--text);
+      padding: 24px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .phone {
+      background: var(--bg);
+      border: 1px solid #26201a;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 10px 35px rgba(0,0,0,0.45);
+    }
+    .hdr {
+      padding: 14px 16px;
+      border-bottom: 1px solid #201a15;
+      font-weight: 600;
+      letter-spacing: .02em;
+    }
+    .content { padding: 14px; }
+    .hint { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
+    .card {
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, #241f19, #171410);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .tag {
+      display: inline-block;
+      font-size: 10px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 6px;
+    }
+    .tag.purple { color: var(--purple); }
+    .tag.parked { color: #c4b59a; }
+    .name { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .session { font-size: 12px; color: #d5cec2; margin: 3px 0; }
+    .players {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .pill, .btn {
+      border: 1px solid #3a2f22;
+      background: var(--card);
+      color: var(--text);
+      border-radius: 9px;
+      padding: 10px;
+      text-align: center;
+      font-size: 13px;
+    }
+    .btn.primary {
+      background: #3a2c18;
+      color: var(--gold);
+      font-weight: 600;
+      margin-top: 10px;
+    }
+    .field { margin-bottom: 10px; }
+    label {
+      display: block;
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 4px;
+    }
+    input, select, textarea {
+      width: 100%;
+      background: var(--raised);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 9px 10px;
+      font: inherit;
+      font-size: 13px;
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .actions { display: flex; gap: 8px; margin-top: 10px; }
+    .actions .btn { flex: 1; }
+    .admin-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 8px;
+      background: var(--card);
+    }
+    .admin-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .mini-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .mini-actions span {
+      border: 1px solid #423526;
+      border-radius: 7px;
+      padding: 5px 8px;
+      font-size: 11px;
+      color: #d3cabd;
+      background: #1b1612;
+    }
+  </style>
+</head>
+<body>
+  <div class="grid">
+    <section class="phone">
+      <div class="hdr">Gate screen — Dynamic campaigns</div>
+      <div class="content">
+        <p class="hint">Current campaign appears first. Active/parked campaigns visible.</p>
+        <div class="card">
+          <div class="tag">Current campaign</div>
+          <div class="name">The Green Hunger</div>
+          <div class="session">Sunday 12 May, 6:30pm</div>
+          <div class="session">Sunday 26 May, 6:30pm</div>
+        </div>
+        <div class="card">
+          <div class="tag purple">Also playing</div>
+          <div class="name">Arcadia</div>
+          <div class="session">Friday 10 May, 7:00pm</div>
+        </div>
+        <div class="card">
+          <div class="tag parked">Parked</div>
+          <div class="name">Shadowreach</div>
+          <div class="session">No upcoming sessions</div>
+        </div>
+        <div class="players">
+          <div class="pill">Chris</div><div class="pill">Emil</div>
+          <div class="pill">Jose</div><div class="pill">Aidan</div>
+        </div>
+        <div class="btn primary">Continue</div>
+      </div>
+    </section>
+
+    <section class="phone">
+      <div class="hdr">Confirm session — Campaign selector</div>
+      <div class="content">
+        <div class="field">
+          <label>Campaign</label>
+          <select>
+            <option>The Green Hunger (Current)</option>
+            <option>Arcadia</option>
+            <option>Midnight Sun</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="field"><label>Start</label><input value="18:30" /></div>
+          <div class="field"><label>End</label><input value="22:00" /></div>
+        </div>
+        <div class="field">
+          <label>Location / notes</label>
+          <textarea rows="3">Online / home</textarea>
+        </div>
+        <div class="field">
+          <label>Players in this session</label>
+          <div class="session">☑ Chris</div>
+          <div class="session">☑ Emil</div>
+          <div class="session">☑ Jose</div>
+          <div class="session">☑ Aidan</div>
+        </div>
+        <div class="actions">
+          <div class="btn">Cancel</div>
+          <div class="btn primary">Confirm</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="phone">
+      <div class="hdr">Campaign management panel</div>
+      <div class="content">
+        <p class="hint">Set current campaign, park/archive, and edit details.</p>
+        <div class="btn">+ Add campaign</div>
+        <div class="admin-item">
+          <div class="admin-top"><strong>The Green Hunger</strong><span>active · current</span></div>
+          <div class="mini-actions">
+            <span>Edit</span><span>Set current</span><span>Park</span><span>Archive</span>
+          </div>
+        </div>
+        <div class="admin-item">
+          <div class="admin-top"><strong>Arcadia</strong><span>active</span></div>
+          <div class="mini-actions">
+            <span>Edit</span><span>Set current</span><span>Park</span><span>Archive</span>
+          </div>
+        </div>
+        <div class="admin-item">
+          <div class="admin-top"><strong>Shadowreach</strong><span>parked</span></div>
+          <div class="mini-actions">
+            <span>Edit</span><span>Activate</span><span>Archive</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
