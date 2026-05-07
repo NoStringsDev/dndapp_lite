@@ -587,8 +587,49 @@
         <div id="playerPicker" class="player-grid" aria-label="Select your player"></div>
         <input id="playerSel" type="hidden" value=""/>
         <button type="button" class="continue-btn" id="btnLogin">Continue</button>
+        <div style="margin-top:10px;text-align:center;">
+          <button type="button" class="small-btn" id="btnOpenManageFromGate">Edit campaigns & players</button>
+        </div>
         <p id="gateErr" class="err" style="display:none;margin-top:10px;"></p>
       </div>
+    </div>
+  </div>
+
+  <div id="campaign-detail-page" class="screen hidden">
+    <div class="app-header">
+      <div>
+        <div class="app-title" id="campaignDetailTitle">Campaign</div>
+        <div class="app-sub" id="campaignDetailSub">Sessions</div>
+      </div>
+      <button type="button" class="signout-btn" id="btnBackToGateFromCampaign">Back</button>
+    </div>
+    <div class="content">
+      <div class="section-label">Upcoming sessions</div>
+      <div id="campaignDetailUpcoming" class="confirmed-list"></div>
+      <div class="section-label" style="margin-top:18px;">Past sessions</div>
+      <div id="campaignDetailPast" class="confirmed-list"></div>
+    </div>
+  </div>
+
+  <div id="manage-page" class="screen hidden">
+    <div class="app-header">
+      <div>
+        <div class="app-title">Edit campaigns & players</div>
+        <div class="app-sub">Signed in as <strong id="manageDispName"></strong></div>
+      </div>
+      <button type="button" class="signout-btn" id="btnBackToGateFromManage">Back</button>
+    </div>
+    <div class="content">
+      <div class="section-label">Campaigns</div>
+      <div style="margin-bottom:10px;">
+        <button type="button" class="small-btn" id="btnCampaignAdd">Add campaign</button>
+      </div>
+      <div id="campaign-admin-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+      <div class="section-label" style="margin-top:18px;">Players</div>
+      <div style="margin-bottom:10px;">
+        <button type="button" class="small-btn" id="btnPlayerAdd">Add player</button>
+      </div>
+      <div id="player-admin-list" style="display:flex;flex-direction:column;gap:10px;"></div>
     </div>
   </div>
 
@@ -629,27 +670,6 @@
               <button type="button" class="small-btn" id="btnRotateIcs">Rotate link</button>
             </div>
           </details>
-        </div>
-      </div>
-      <div class="cal-sync-wrap" id="campaign-admin">
-        <button
-          type="button"
-          class="cal-sync-toggle"
-          id="btnToggleCampaignPanel"
-          aria-expanded="false"
-          aria-controls="campaign-panel"
-        >
-          <span>
-            <span class="cal-sync-title">Campaign management</span>
-            <span class="cal-sync-hint">Set current campaign, park/archive, and edit details</span>
-          </span>
-          <span class="cal-sync-chevron">&#8964;</span>
-        </button>
-        <div class="cal-sync-panel" id="campaign-panel" hidden>
-          <div class="cal-feed-btns" style="margin-bottom:10px;">
-            <button type="button" class="small-btn" id="btnCampaignAdd">Add campaign</button>
-          </div>
-          <div id="campaign-admin-list" style="display:flex;flex-direction:column;gap:10px;"></div>
         </div>
       </div>
       <div class="month-nav">
@@ -721,7 +741,7 @@
 
   <script>
   (function(){
-    var APP = { dates: [], players: [], campaigns: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, pendingDetailIso: null, saveT: null, viewMonth: '', todayIso: '', hasScrolledToToday: false, editBooking: false, _editSnapshot: null, initialLoadPending: false, icsUrl: '', icsWebcalUrl: '', hasTriedSubscribe: false };
+    var APP = { dates: [], players: [], allPlayers: [], campaigns: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, pendingDetailIso: null, saveT: null, viewMonth: '', todayIso: '', hasScrolledToToday: false, editBooking: false, _editSnapshot: null, initialLoadPending: false, icsUrl: '', icsWebcalUrl: '', hasTriedSubscribe: false, selectedCampaignId: '' };
 
     /** True after successful login this page load; avoids boot()'s stale authMe failing later and calling showGate(). */
     var loginWonRace = false;
@@ -817,14 +837,18 @@
       if (loginWonRace) throttledResumeDataFetch();
     });
 
-    function showGate() {
-      document.getElementById('gate').classList.remove('hidden');
-      document.getElementById('app').classList.add('hidden');
+    function showScreen(screenId) {
+      ['gate', 'app', 'campaign-detail-page', 'manage-page'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (id === screenId) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
     }
-    function showApp() {
-      document.getElementById('gate').classList.add('hidden');
-      document.getElementById('app').classList.remove('hidden');
-    }
+    function showGate() { showScreen('gate'); }
+    function showApp() { showScreen('app'); }
+    function showCampaignDetail() { showScreen('campaign-detail-page'); }
+    function showManagePage() { showScreen('manage-page'); }
 
     function voteClass(v) {
       if (v === 'available') return 'avail';
@@ -1181,6 +1205,7 @@
       if (r.confirmedGames) APP.confirmedGames = r.confirmedGames;
       if (r.campaigns) APP.campaigns = r.campaigns;
       if (r.players) APP.players = r.players;
+      if (r.allPlayers) APP.allPlayers = r.allPlayers;
       if (r.fullTableDates) APP.fullTableDates = r.fullTableDates;
       if (r.arcadiaDefaultLocation) APP.arcadiaDefaultLocation = r.arcadiaDefaultLocation;
       if (r.todayIso) APP.todayIso = r.todayIso;
@@ -1188,8 +1213,8 @@
       ensureViewMonth();
       renderConfirmed();
       renderDayList();
-      renderCampaignAdmin();
       renderGateSessions(APP.campaigns || [], APP.confirmedGames || []);
+      renderManagePage();
       if (!APP.hasScrolledToToday && APP.todayIso) {
         APP.hasScrolledToToday = true;
         requestAnimationFrame(function() {
@@ -1307,48 +1332,32 @@
       setIcsPanelOpen(!isOpen);
     });
 
-    function setCampaignPanelOpen(isOpen) {
-      var wrap = document.getElementById('campaign-admin');
-      var panel = document.getElementById('campaign-panel');
-      var btn = document.getElementById('btnToggleCampaignPanel');
-      if (!wrap || !panel || !btn) return;
-      if (isOpen) {
-        wrap.classList.add('open');
-        panel.hidden = false;
-        btn.setAttribute('aria-expanded', 'true');
-      } else {
-        wrap.classList.remove('open');
-        panel.hidden = true;
-        btn.setAttribute('aria-expanded', 'false');
-      }
-    }
-
-    function renderCampaignAdmin() {
+    function renderManagePage() {
       var list = document.getElementById('campaign-admin-list');
       if (!list) return;
       var campaigns = (APP.campaigns || []).slice();
       if (!campaigns.length) {
         list.innerHTML = '<div class="cal-sync-note">No campaigns configured.</div>';
-        return;
+      } else {
+        var h = '';
+        campaigns.forEach(function(c) {
+          h += '<div style="border:1px solid var(--border);border-radius:10px;padding:10px;">' +
+            '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">' +
+              '<strong>' + esc(c.name || 'Campaign') + '</strong>' +
+              '<span style="font-size:11px;color:var(--text-mute);">' + esc(c.status || 'active') + (c.isCurrent ? ' · current' : '') + '</span>' +
+            '</div>' +
+            (c.tagline ? ('<div style="font-size:12px;color:var(--text-dim);margin-top:4px;">' + esc(c.tagline) + '</div>') : '') +
+            '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">' +
+              (c.status === 'active' ? '<button type="button" class="small-btn js-camp-current" data-id="' + esc(c.id) + '">Set current</button>' : '') +
+              (c.status !== 'active' ? '<button type="button" class="small-btn js-camp-active" data-id="' + esc(c.id) + '">Activate</button>' : '') +
+              (c.status !== 'parked' ? '<button type="button" class="small-btn js-camp-park" data-id="' + esc(c.id) + '">Park</button>' : '') +
+              (c.status !== 'archived' ? '<button type="button" class="small-btn js-camp-archive" data-id="' + esc(c.id) + '">Archive</button>' : '') +
+              '<button type="button" class="small-btn js-camp-edit" data-id="' + esc(c.id) + '">Edit</button>' +
+            '</div>' +
+          '</div>';
+        });
+        list.innerHTML = h;
       }
-      var h = '';
-      campaigns.forEach(function(c) {
-        h += '<div style="border:1px solid var(--border);border-radius:10px;padding:10px;">' +
-          '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">' +
-            '<strong>' + esc(c.name || 'Campaign') + '</strong>' +
-            '<span style="font-size:11px;color:var(--text-mute);">' + esc(c.status || 'active') + (c.isCurrent ? ' · current' : '') + '</span>' +
-          '</div>' +
-          (c.tagline ? ('<div style="font-size:12px;color:var(--text-dim);margin-top:4px;">' + esc(c.tagline) + '</div>') : '') +
-          '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">' +
-            (c.status === 'active' ? '<button type="button" class="small-btn js-camp-current" data-id="' + esc(c.id) + '">Set current</button>' : '') +
-            (c.status !== 'active' ? '<button type="button" class="small-btn js-camp-active" data-id="' + esc(c.id) + '">Activate</button>' : '') +
-            (c.status !== 'parked' ? '<button type="button" class="small-btn js-camp-park" data-id="' + esc(c.id) + '">Park</button>' : '') +
-            (c.status !== 'archived' ? '<button type="button" class="small-btn js-camp-archive" data-id="' + esc(c.id) + '">Archive</button>' : '') +
-            '<button type="button" class="small-btn js-camp-edit" data-id="' + esc(c.id) + '">Edit</button>' +
-          '</div>' +
-        '</div>';
-      });
-      list.innerHTML = h;
 
       list.querySelectorAll('.js-camp-current').forEach(function(btn) {
         btn.addEventListener('click', function() {
@@ -1397,12 +1406,74 @@
           });
         });
       });
+
+      var pList = document.getElementById('player-admin-list');
+      if (!pList) return;
+      var players = (APP.allPlayers || APP.players || []).slice();
+      if (!players.length) {
+        pList.innerHTML = '<div class="cal-sync-note">No players configured.</div>';
+      } else {
+        var ph = '';
+        players.forEach(function(p) {
+          ph += '<div style="border:1px solid var(--border);border-radius:10px;padding:10px;">' +
+            '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">' +
+              '<strong>' + esc(p.displayName || p.id) + '</strong>' +
+              '<span style="font-size:11px;color:var(--text-mute);">' + (p.isActive ? 'active' : 'inactive') + '</span>' +
+            '</div>' +
+            '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">' +
+              '<button type="button" class="small-btn js-player-rename" data-id="' + esc(p.id) + '">Rename</button>' +
+              '<button type="button" class="small-btn js-player-sort" data-id="' + esc(p.id) + '" data-sort="' + esc(String(p.sortOrder || 0)) + '">Sort</button>' +
+              (p.isActive ? '<button type="button" class="small-btn js-player-remove" data-id="' + esc(p.id) + '">Deactivate</button>' : '<button type="button" class="small-btn js-player-activate" data-id="' + esc(p.id) + '">Activate</button>') +
+            '</div>' +
+          '</div>';
+        });
+        pList.innerHTML = ph;
+      }
+      pList.querySelectorAll('.js-player-rename').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var id = this.getAttribute('data-id');
+          var existing = (APP.allPlayers || []).find(function(p) { return p.id === id; });
+          if (!existing) return;
+          var displayName = prompt('Player name', existing.displayName || '');
+          if (!displayName) return;
+          api('updatePlayer', { id: id, displayName: displayName }).then(function(r) {
+            if (!r.ok) { alert(r.error || 'Failed'); return; }
+            mergeApp(r);
+          });
+        });
+      });
+      pList.querySelectorAll('.js-player-sort').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var id = this.getAttribute('data-id');
+          var existing = (APP.allPlayers || []).find(function(p) { return p.id === id; });
+          if (!existing) return;
+          var sortOrder = prompt('Sort order', String(existing.sortOrder || 0));
+          if (sortOrder == null) return;
+          api('updatePlayer', { id: id, sortOrder: Number(sortOrder) || 0 }).then(function(r) {
+            if (!r.ok) { alert(r.error || 'Failed'); return; }
+            mergeApp(r);
+          });
+        });
+      });
+      pList.querySelectorAll('.js-player-remove').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          if (!confirm('Deactivate this player?')) return;
+          api('removePlayer', { id: this.getAttribute('data-id') }).then(function(r) {
+            if (!r.ok) { alert(r.error || 'Failed'); return; }
+            mergeApp(r);
+          });
+        });
+      });
+      pList.querySelectorAll('.js-player-activate').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          api('updatePlayer', { id: this.getAttribute('data-id'), isActive: true }).then(function(r) {
+            if (!r.ok) { alert(r.error || 'Failed'); return; }
+            mergeApp(r);
+          });
+        });
+      });
     }
 
-    document.getElementById('btnToggleCampaignPanel').addEventListener('click', function() {
-      var isOpen = this.getAttribute('aria-expanded') === 'true';
-      setCampaignPanelOpen(!isOpen);
-    });
     document.getElementById('btnCampaignAdd').addEventListener('click', function() {
       var name = prompt('New campaign name');
       if (!name) return;
@@ -1410,7 +1481,14 @@
       api('createCampaign', { name: name, tagline: tagline, status: 'active' }).then(function(r) {
         if (!r.ok) { alert(r.error || 'Failed'); return; }
         mergeApp(r);
-        setCampaignPanelOpen(true);
+      });
+    });
+    document.getElementById('btnPlayerAdd').addEventListener('click', function() {
+      var displayName = prompt('New player name');
+      if (!displayName) return;
+      api('createPlayer', { displayName: displayName }).then(function(r) {
+        if (!r.ok) { alert(r.error || 'Failed'); return; }
+        mergeApp(r);
       });
     });
 
@@ -1467,7 +1545,7 @@
       });
         var accent = c.accentKey === 'gh' ? 'gh' : 'arc';
         var statusTag = c.isCurrent ? 'Current campaign' : (c.status === 'parked' ? 'Parked' : 'Also playing');
-        html += '<div class="campaign-card ' + accent + '">' +
+        html += '<div class="campaign-card ' + accent + '" data-campaign-id="' + esc(c.id) + '">' +
           '<div class="campaign-card-bg">' +
             (c.cardImageUrl ? '<img src="' + esc(c.cardImageUrl) + '" alt="' + esc(c.name || 'Campaign') + '" onerror="this.style.display=\'none\'"/>' : '') +
           '</div>' +
@@ -1480,16 +1558,43 @@
         '</div>';
       });
       wrap.innerHTML = html;
-      document.querySelectorAll('.js-gate-session').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          APP.pendingDetailIso = this.getAttribute('data-iso');
-          var loginBtn = document.getElementById('btnLogin');
-          if (loginBtn) {
-            loginBtn.scrollIntoView({ block: 'center', behavior: 'smooth' });
-            loginBtn.focus();
-          }
+      wrap.querySelectorAll('.campaign-card').forEach(function(card) {
+        card.addEventListener('click', function() {
+          APP.selectedCampaignId = this.getAttribute('data-campaign-id') || '';
+          renderCampaignDetailPage();
+          showCampaignDetail();
         });
       });
+    }
+
+    function renderCampaignDetailPage() {
+      var campaign = campaignById(APP.selectedCampaignId);
+      if (!campaign) return;
+      var titleEl = document.getElementById('campaignDetailTitle');
+      var subEl = document.getElementById('campaignDetailSub');
+      var upEl = document.getElementById('campaignDetailUpcoming');
+      var pastEl = document.getElementById('campaignDetailPast');
+      if (!titleEl || !subEl || !upEl || !pastEl) return;
+      titleEl.textContent = campaign.name || 'Campaign';
+      subEl.textContent = campaign.tagline || (campaign.isCurrent ? 'Current campaign' : 'Campaign details');
+      var now = Date.now();
+      var games = (APP.confirmedGames || []).filter(function(g) { return g.campaignId === campaign.id; });
+      var upcoming = games.filter(function(g) { return parseSessionStartTs(g.date, g.startTime) >= now; });
+      var past = games.filter(function(g) { return parseSessionStartTs(g.date, g.startTime) < now; }).reverse();
+      function asHtml(list) {
+        if (!list.length) return '<p class="day-empty">No sessions.</p>';
+        return list.map(function(g) {
+          return '<div class="session-card" style="min-height:auto;cursor:default;">' +
+            '<div class="session-card-content">' +
+              '<div class="session-date-large">' + esc(g.dayLabel + ', ' + g.label) + '</div>' +
+              '<div class="session-time-text">' + esc((g.startTime || '') + ' – ' + (g.endTime || '')) + '</div>' +
+              '<div class="session-time-text">' + esc(g.location || '(no location)') + '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      }
+      upEl.innerHTML = asHtml(upcoming);
+      pastEl.innerHTML = asHtml(past);
     }
 
     function resetBookingEditorState() {
@@ -1687,27 +1792,41 @@
       });
     });
 
-    document.getElementById('btnLogin').addEventListener('click', function() {
+    function loginFromGateThen(nextView) {
       var secret = document.getElementById('secret').value;
       var playerId = document.getElementById('playerSel').value;
       var ge = document.getElementById('gateErr');
       ge.style.display = 'none';
-      api('login', { groupSecret: secret, playerId: playerId }).then(function(r) {
+      return api('login', { groupSecret: secret, playerId: playerId }).then(function(r) {
         if (!r.ok) {
           ge.textContent = r.error || 'Login failed';
           ge.style.display = 'block';
-          return;
+          return false;
         }
         loginWonRace = true;
-        showApp();
-        if (r.me) document.getElementById('dispName').textContent = r.me.displayName || '';
-        loadAppData().then(function() {
-          if (APP.pendingDetailIso) {
-            openDetail(APP.pendingDetailIso);
-            APP.pendingDetailIso = null;
-          }
+        if (r.me) {
+          document.getElementById('dispName').textContent = r.me.displayName || '';
+          var manageName = document.getElementById('manageDispName');
+          if (manageName) manageName.textContent = r.me.displayName || '';
+        }
+        return loadAppData().then(function() {
+          if (nextView === 'manage') showManagePage();
+          else showApp();
+          return true;
         });
       });
+    }
+    document.getElementById('btnLogin').addEventListener('click', function() {
+      loginFromGateThen('app');
+    });
+    document.getElementById('btnOpenManageFromGate').addEventListener('click', function() {
+      loginFromGateThen('manage');
+    });
+    document.getElementById('btnBackToGateFromCampaign').addEventListener('click', function() {
+      showGate();
+    });
+    document.getElementById('btnBackToGateFromManage').addEventListener('click', function() {
+      showGate();
     });
 
     document.getElementById('btnLogout').addEventListener('click', function() {
@@ -1720,18 +1839,14 @@
 
     function boot() {
       setIcsPanelOpen(false);
-      setCampaignPanelOpen(false);
       api('authMe', {}).then(function(r) {
         if (r.ok && r.me) {
           loginWonRace = true;
           document.getElementById('dispName').textContent = r.me.displayName || '';
+          var manageName = document.getElementById('manageDispName');
+          if (manageName) manageName.textContent = r.me.displayName || '';
           showApp();
-          loadAppData().then(function() {
-            if (APP.pendingDetailIso) {
-              openDetail(APP.pendingDetailIso);
-              APP.pendingDetailIso = null;
-            }
-          });
+          loadAppData();
         } else if (!loginWonRace) {
           api('getPublicBootstrap', {}).then(function(b) {
             if (loginWonRace) return;
