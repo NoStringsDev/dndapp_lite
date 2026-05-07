@@ -621,13 +621,19 @@
     </div>
     <div class="content">
       <div class="section-label">Campaigns</div>
-      <div style="margin-bottom:10px;border:1px solid var(--border);border-radius:10px;padding:10px;">
-        <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Add campaign</div>
+      <div style="margin-bottom:10px;">
+        <button type="button" class="small-btn" id="btnToggleNewCampaignForm">Add campaign</button>
+      </div>
+      <div id="newCampaignFormWrap" class="hidden" style="margin-bottom:10px;border:1px solid var(--border);border-radius:10px;padding:10px;">
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">New campaign details</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <input id="newCampaignName" type="text" placeholder="Campaign name" style="flex:1;min-width:160px;"/>
           <input id="newCampaignTagline" type="text" placeholder="Tagline (optional)" style="flex:1;min-width:160px;"/>
           <input id="newCampaignImage" type="text" placeholder="Artwork URL (optional)" style="flex:1;min-width:200px;"/>
-          <button type="button" class="small-btn" id="btnCampaignAdd">Add</button>
+          <button type="button" class="small-btn" id="btnCampaignAdd">Save new campaign</button>
+        </div>
+        <div style="margin-top:8px;">
+          <img id="newCampaignImagePreview" alt="New campaign artwork preview" style="width:100%;max-height:140px;object-fit:cover;border:1px solid var(--border);border-radius:8px;display:none;"/>
         </div>
       </div>
       <div id="campaign-admin-list" style="display:flex;flex-direction:column;gap:10px;"></div>
@@ -1368,6 +1374,9 @@
               '<input type="text" class="js-camp-image" data-id="' + esc(c.id) + '" value="' + esc(c.cardImageUrl || '') + '" placeholder="Artwork URL" style="flex:2;min-width:220px;"/>' +
               '<button type="button" class="small-btn js-camp-save" data-id="' + esc(c.id) + '">Save</button>' +
             '</div>' +
+            '<div style="margin-top:8px;">' +
+              '<img class="js-camp-image-preview" data-id="' + esc(c.id) + '" src="' + esc(c.cardImageUrl || '') + '" alt="' + esc((c.name || 'Campaign') + ' artwork preview') + '" style="width:100%;max-height:140px;object-fit:cover;border:1px solid var(--border);border-radius:8px;' + (c.cardImageUrl ? '' : 'display:none;') + '"/>' +
+            '</div>' +
             '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">' +
               (c.status === 'active' ? '<button type="button" class="small-btn js-camp-current" data-id="' + esc(c.id) + '">Set current</button>' : '') +
               (c.status !== 'active' ? '<button type="button" class="small-btn js-camp-active" data-id="' + esc(c.id) + '">Activate</button>' : '') +
@@ -1429,6 +1438,21 @@
             if (!r.ok) { alert(r.error || 'Failed'); return; }
             mergeApp(r);
           });
+        });
+      });
+      list.querySelectorAll('.js-camp-image').forEach(function(input) {
+        input.addEventListener('input', function() {
+          var id = this.getAttribute('data-id');
+          var preview = list.querySelector('.js-camp-image-preview[data-id="' + id + '"]');
+          if (!preview) return;
+          var url = this.value.trim();
+          if (!url) {
+            preview.style.display = 'none';
+            preview.removeAttribute('src');
+            return;
+          }
+          preview.src = url;
+          preview.style.display = '';
         });
       });
 
@@ -1503,8 +1527,32 @@
         if (nameEl) nameEl.value = '';
         if (taglineEl) taglineEl.value = '';
         if (imageEl) imageEl.value = '';
+        var newPreview = document.getElementById('newCampaignImagePreview');
+        if (newPreview) {
+          newPreview.style.display = 'none';
+          newPreview.removeAttribute('src');
+        }
+        var formWrap = document.getElementById('newCampaignFormWrap');
+        if (formWrap) formWrap.classList.add('hidden');
         mergeApp(r);
       });
+    });
+    document.getElementById('btnToggleNewCampaignForm').addEventListener('click', function() {
+      var formWrap = document.getElementById('newCampaignFormWrap');
+      if (!formWrap) return;
+      formWrap.classList.toggle('hidden');
+    });
+    document.getElementById('newCampaignImage').addEventListener('input', function() {
+      var preview = document.getElementById('newCampaignImagePreview');
+      if (!preview) return;
+      var url = this.value.trim();
+      if (!url) {
+        preview.style.display = 'none';
+        preview.removeAttribute('src');
+        return;
+      }
+      preview.src = url;
+      preview.style.display = '';
     });
     document.getElementById('btnPlayerAdd').addEventListener('click', function() {
       var input = document.getElementById('newPlayerName');
