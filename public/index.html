@@ -979,63 +979,78 @@
     }
 
     function deriveThemeFromArtwork(url, fallbackHex) {
-      return new Promise(function(resolve) {
-        var img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = function() {
-          try {
-            var canvas = document.createElement('canvas');
-            var w = 24;
-            var h = 24;
-            canvas.width = w; canvas.height = h;
-            var ctx = canvas.getContext('2d', { willReadFrequently: true });
-            ctx.drawImage(img, 0, 0, w, h);
-            var data = ctx.getImageData(0, 0, w, h).data;
-            var r = 0, g = 0, b = 0, n = 0;
-            for (var i = 0; i < data.length; i += 4) {
-              var a = data[i + 3];
-              if (a < 80) continue;
-              r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
-            }
-            if (!n) throw new Error('No pixels');
-            r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n);
-            var accent = rgbToHex(r, g, b);
-            var t = {
-              themeMode: 'auto',
-              accentColor: accent,
-              accentSoftColor: rgbaFromRgb(r, g, b, 0.18),
-              textOnAccent: pickTextOnAccent(accent),
-              overlayColor: rgbaFromRgb(Math.max(0, r - 22), Math.max(0, g - 22), Math.max(0, b - 22), 0.62),
-              borderColor: rgbToHex(Math.max(0, r - 36), Math.max(0, g - 36), Math.max(0, b - 36)),
-              pillColor: rgbaFromRgb(r, g, b, 0.14),
-            };
-            resolve(t);
-          } catch {
-            var fb = fallbackHex || '#7ab880';
-            resolve({
-              themeMode: 'auto',
-              accentColor: fb,
-              accentSoftColor: 'rgba(122,184,128,0.18)',
-              textOnAccent: pickTextOnAccent(fb),
-              overlayColor: 'rgba(0,0,0,0.62)',
-              borderColor: '#2e5030',
-              pillColor: 'rgba(255,255,255,0.12)',
-            });
-          }
+      function fallbackTheme() {
+        var fb = fallbackHex || '#7ab880';
+        return {
+          themeMode: 'auto',
+          accentColor: fb,
+          accentSoftColor: 'rgba(122,184,128,0.18)',
+          textOnAccent: pickTextOnAccent(fb),
+          overlayColor: 'rgba(0,0,0,0.62)',
+          borderColor: '#2e5030',
+          pillColor: 'rgba(255,255,255,0.12)',
         };
-        img.onerror = function() {
-          var fb = fallbackHex || '#7ab880';
+      }
+      function loadImage(src) {
+        return new Promise(function(resolve, reject) {
+          var img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = function() { resolve(img); };
+          img.onerror = reject;
+          img.src = src;
+        });
+      }
+      function pickVividColor(data) {
+        var best = null;
+        var bestScore = -1;
+        for (var i = 0; i < data.length; i += 4) {
+          var a = data[i + 3];
+          if (a < 120) continue;
+          var r = data[i], g = data[i + 1], b = data[i + 2];
+          var max = Math.max(r, g, b), min = Math.min(r, g, b);
+          var sat = max ? (max - min) / max : 0;
+          var lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          // Prefer saturated, visible colors; slight bonus for warm tones.
+          var warm = (r - b) / 255;
+          var score = sat * 2.4 + (lum / 255) * 0.45 + warm * 0.35;
+          if (score > bestScore) {
+            bestScore = score;
+            best = { r: r, g: g, b: b };
+          }
+        }
+        return best;
+      }
+      return new Promise(function(resolve) {
+        var rawUrl = String(url || '').trim();
+        if (!rawUrl) return resolve(fallbackTheme());
+        var proxyUrl = '/image-proxy?url=' + encodeURIComponent(rawUrl);
+        // Try proxy first to avoid canvas CORS tainting.
+        loadImage(proxyUrl).catch(function() {
+          return loadImage(rawUrl);
+        }).then(function(img) {
+          var canvas = document.createElement('canvas');
+          var w = 36;
+          var h = 36;
+          canvas.width = w; canvas.height = h;
+          var ctx = canvas.getContext('2d', { willReadFrequently: true });
+          ctx.drawImage(img, 0, 0, w, h);
+          var data = ctx.getImageData(0, 0, w, h).data;
+          var picked = pickVividColor(data);
+          if (!picked) return resolve(fallbackTheme());
+          var r = picked.r, g = picked.g, b = picked.b;
+          var accent = rgbToHex(r, g, b);
           resolve({
             themeMode: 'auto',
-            accentColor: fb,
-            accentSoftColor: 'rgba(122,184,128,0.18)',
-            textOnAccent: pickTextOnAccent(fb),
-            overlayColor: 'rgba(0,0,0,0.62)',
-            borderColor: '#2e5030',
-            pillColor: 'rgba(255,255,255,0.12)',
+            accentColor: accent,
+            accentSoftColor: rgbaFromRgb(r, g, b, 0.20),
+            textOnAccent: pickTextOnAccent(accent),
+            overlayColor: rgbaFromRgb(Math.max(0, r - 28), Math.max(0, g - 28), Math.max(0, b - 28), 0.64),
+            borderColor: rgbToHex(Math.max(0, r - 38), Math.max(0, g - 38), Math.max(0, b - 38)),
+            pillColor: rgbaFromRgb(r, g, b, 0.16),
           });
-        };
-        img.src = String(url || '').trim();
+        }).catch(function() {
+          resolve(fallbackTheme());
+        });
       });
     }
 
