@@ -23,6 +23,19 @@ export class D1Repo {
     }));
   }
 
+  async listPlayers(includeInactive = true) {
+    const where = includeInactive ? '' : 'WHERE is_active = 1';
+    const res = await this._db
+      .prepare(`SELECT id, display_name, sort_order, is_active FROM players ${where} ORDER BY is_active DESC, sort_order ASC, display_name ASC`)
+      .all();
+    return (res.results || []).map(r => ({
+      id: r.id,
+      displayName: r.display_name,
+      sortOrder: r.sort_order,
+      isActive: !!r.is_active,
+    }));
+  }
+
   async getPlayerById(id) {
     const row = await this._db
       .prepare('SELECT id, display_name, sort_order, is_active FROM players WHERE id = ?')
@@ -35,6 +48,27 @@ export class D1Repo {
       sortOrder: row.sort_order,
       isActive: !!row.is_active,
     };
+  }
+
+  async createPlayer(row) {
+    await this._db
+      .prepare('INSERT INTO players (id, display_name, sort_order, is_active) VALUES (?, ?, ?, ?)')
+      .bind(row.id, row.displayName, row.sortOrder || 0, row.isActive ? 1 : 0)
+      .run();
+  }
+
+  async updatePlayer(row) {
+    await this._db
+      .prepare('UPDATE players SET display_name = ?, sort_order = ?, is_active = ? WHERE id = ?')
+      .bind(row.displayName, row.sortOrder || 0, row.isActive ? 1 : 0, row.id)
+      .run();
+  }
+
+  async deactivatePlayer(id) {
+    await this._db
+      .prepare('UPDATE players SET is_active = 0 WHERE id = ?')
+      .bind(id)
+      .run();
   }
 
   _mapCampaign(row) {

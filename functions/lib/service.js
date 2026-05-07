@@ -230,7 +230,8 @@ export async function getPublicBootstrap(repo, env) {
   const campaigns = sortCampaigns(await repo.listCampaigns());
   const requiresGroupSecret = Boolean(String(env?.GROUP_SECRET || '').trim());
   const today = isoDateInTimeZone(new Date(), TZ);
-  const bookings = await repo.listBookingsFrom(today);
+  const rangeStart = addDaysLondon(today, -ROLLING_PAST_DAYS);
+  const bookings = await repo.listBookingsFrom(rangeStart);
   const nameById = Object.fromEntries(players.map(p => [p.id, p.displayName]));
   const campaignById = Object.fromEntries(campaigns.map(c => [c.id, c]));
   const confirmedGames = toConfirmedGames(bookings, nameById, campaignById);
@@ -280,6 +281,7 @@ export async function authMe(sessionId, repo) {
 
 async function buildAppPayload(repo, playerId) {
   const players = await repo.listActivePlayers();
+  const allPlayers = await repo.listPlayers(true);
   const campaigns = sortCampaigns(await repo.listCampaigns());
   const dates = rollingDateIsos();
   const votesByDate = await repo.getAllVotesForDates(dates);
@@ -314,6 +316,7 @@ async function buildAppPayload(repo, playerId) {
   return {
     me: me ? { id: me.id, displayName: me.displayName } : null,
     players,
+    allPlayers,
     campaigns,
     dates: datesPayload,
     fullTableDates,
@@ -433,6 +436,14 @@ function slugifyCampaignName(name) {
     .slice(0, 50) || 'campaign';
 }
 
+function slugifyPlayerId(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 24) || 'player';
+}
+
 function randomCampaignId() {
   return `camp_${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -539,6 +550,67 @@ export async function setCampaignStatus(payload, repo) {
     if (status === 'active' && (payload?.makeCurrent || false)) await repo.setCurrentCampaign(id);
     await ensureCurrentCampaign(repo);
     return { ok: true, ...(await buildAppPayload(repo, payload.playerId)) };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+export async function createPlayer(payload, repo) {
+  try {
+    const actorId = String(payload?.playerId || '').trim();
+    if (!actorId) return { ok: false, error: 'Not authenticated.' };
+    const displayName = String(payload?.displayName || '').trim();
+    if (!displayName) return { ok: false, error: 'Player name is required.' };
+    const existing = await repo.listPlayers(true);
+    const ids = new Set(existing.map(p => p.id));
+    const base = slugifyPlayerId(payload?.id || displayName);
+    let id = base;
+    let i = 2;
+    while (ids.has(id)) id = `${base}_${i++}`;
+    const maxSort = existing.reduce((m, p) => Math.max(m, Number(p.sortOrder || 0)), -1);
+    await repo.createPlayer({
+      id,
+      displayName,
+      sortOrder: maxSort + 1,
+      isActive: true,
+    });
+    return { ok: true, ...(await buildAppPayload(repo, actorId)) };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+export async function updatePlayer(payload, repo) {
+  try {
+    const actorId = String(payload?.playerId || '').trim();
+    if (!actorId) return { ok: false, error: 'Not authenticated.' };
+    const id = String(payload?.id || '').trim();
+    if (!id) return { ok: false, error: 'Player id is required.' };
+    const player = await repo.getPlayerById(id);
+    if (!player) return { ok: false, error: 'Player not found.' };
+    const all = await repo.listPlayers(true);
+    const current = all.find(p => p.id === id) || player;
+    const displayName = String(payload?.displayName ?? current.displayName).trim();
+    if (!displayName) return { ok: false, error: 'Player name is required.' };
+    const sortOrder = Number(payload?.sortOrder ?? current.sortOrder) || 0;
+    const isActive = payload?.isActive === undefined ? current.isActive : Boolean(payload.isActive);
+    await repo.updatePlayer({ id, displayName, sortOrder, isActive });
+    return { ok: true, ...(await buildAppPayload(repo, actorId)) };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+export async function removePlayer(payload, repo) {
+  try {
+    const actorId = String(payload?.playerId || '').trim();
+    if (!actorId) return { ok: false, error: 'Not authenticated.' };
+    const id = String(payload?.id || '').trim();
+    if (!id) return { ok: false, error: 'Player id is required.' };
+    const player = await repo.getPlayerById(id);
+    if (!player) return { ok: false, error: 'Player not found.' };
+    await repo.deactivatePlayer(id);
+    return { ok: true, ...(await buildAppPayload(repo, actorId)) };
   } catch (err) {
     return { ok: false, error: String(err) };
   }
