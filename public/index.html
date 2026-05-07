@@ -621,13 +621,23 @@
     </div>
     <div class="content">
       <div class="section-label">Campaigns</div>
-      <div style="margin-bottom:10px;">
-        <button type="button" class="small-btn" id="btnCampaignAdd">Add campaign</button>
+      <div style="margin-bottom:10px;border:1px solid var(--border);border-radius:10px;padding:10px;">
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Add campaign</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input id="newCampaignName" type="text" placeholder="Campaign name" style="flex:1;min-width:160px;"/>
+          <input id="newCampaignTagline" type="text" placeholder="Tagline (optional)" style="flex:1;min-width:160px;"/>
+          <input id="newCampaignImage" type="text" placeholder="Artwork URL (optional)" style="flex:1;min-width:200px;"/>
+          <button type="button" class="small-btn" id="btnCampaignAdd">Add</button>
+        </div>
       </div>
       <div id="campaign-admin-list" style="display:flex;flex-direction:column;gap:10px;"></div>
       <div class="section-label" style="margin-top:18px;">Players</div>
-      <div style="margin-bottom:10px;">
-        <button type="button" class="small-btn" id="btnPlayerAdd">Add player</button>
+      <div style="margin-bottom:10px;border:1px solid var(--border);border-radius:10px;padding:10px;">
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Add player</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input id="newPlayerName" type="text" placeholder="Player name" style="flex:1;min-width:180px;"/>
+          <button type="button" class="small-btn" id="btnPlayerAdd">Add</button>
+        </div>
       </div>
       <div id="player-admin-list" style="display:flex;flex-direction:column;gap:10px;"></div>
     </div>
@@ -873,6 +883,12 @@
 
     function selectedCampaign() {
       return campaignById(document.getElementById('cfKind').value);
+    }
+
+    function sortPlayersByName(players) {
+      return (players || []).slice().sort(function(a, b) {
+        return String(a.displayName || '').localeCompare(String(b.displayName || ''), undefined, { sensitivity: 'base' });
+      });
     }
 
     function distinctMonths(dates) {
@@ -1204,8 +1220,8 @@
       if (r.dates) APP.dates = r.dates;
       if (r.confirmedGames) APP.confirmedGames = r.confirmedGames;
       if (r.campaigns) APP.campaigns = r.campaigns;
-      if (r.players) APP.players = r.players;
-      if (r.allPlayers) APP.allPlayers = r.allPlayers;
+      if (r.players) APP.players = sortPlayersByName(r.players);
+      if (r.allPlayers) APP.allPlayers = sortPlayersByName(r.allPlayers);
       if (r.fullTableDates) APP.fullTableDates = r.fullTableDates;
       if (r.arcadiaDefaultLocation) APP.arcadiaDefaultLocation = r.arcadiaDefaultLocation;
       if (r.todayIso) APP.todayIso = r.todayIso;
@@ -1346,13 +1362,17 @@
               '<strong>' + esc(c.name || 'Campaign') + '</strong>' +
               '<span style="font-size:11px;color:var(--text-mute);">' + esc(c.status || 'active') + (c.isCurrent ? ' · current' : '') + '</span>' +
             '</div>' +
-            (c.tagline ? ('<div style="font-size:12px;color:var(--text-dim);margin-top:4px;">' + esc(c.tagline) + '</div>') : '') +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">' +
+              '<input type="text" class="js-camp-name" data-id="' + esc(c.id) + '" value="' + esc(c.name || '') + '" placeholder="Campaign name" style="flex:1;min-width:140px;"/>' +
+              '<input type="text" class="js-camp-tagline" data-id="' + esc(c.id) + '" value="' + esc(c.tagline || '') + '" placeholder="Tagline" style="flex:1;min-width:160px;"/>' +
+              '<input type="text" class="js-camp-image" data-id="' + esc(c.id) + '" value="' + esc(c.cardImageUrl || '') + '" placeholder="Artwork URL" style="flex:2;min-width:220px;"/>' +
+              '<button type="button" class="small-btn js-camp-save" data-id="' + esc(c.id) + '">Save</button>' +
+            '</div>' +
             '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">' +
               (c.status === 'active' ? '<button type="button" class="small-btn js-camp-current" data-id="' + esc(c.id) + '">Set current</button>' : '') +
               (c.status !== 'active' ? '<button type="button" class="small-btn js-camp-active" data-id="' + esc(c.id) + '">Activate</button>' : '') +
               (c.status !== 'parked' ? '<button type="button" class="small-btn js-camp-park" data-id="' + esc(c.id) + '">Park</button>' : '') +
               (c.status !== 'archived' ? '<button type="button" class="small-btn js-camp-archive" data-id="' + esc(c.id) + '">Archive</button>' : '') +
-              '<button type="button" class="small-btn js-camp-edit" data-id="' + esc(c.id) + '">Edit</button>' +
             '</div>' +
           '</div>';
         });
@@ -1392,15 +1412,20 @@
           });
         });
       });
-      list.querySelectorAll('.js-camp-edit').forEach(function(btn) {
+      list.querySelectorAll('.js-camp-save').forEach(function(btn) {
         btn.addEventListener('click', function() {
           var id = this.getAttribute('data-id');
-          var existing = campaignById(id);
-          if (!existing) return;
-          var name = prompt('Campaign name', existing.name || '');
-          if (!name) return;
-          var tagline = prompt('Tagline', existing.tagline || '') || '';
-          api('updateCampaign', { id: id, name: name, tagline: tagline }).then(function(r) {
+          var nameEl = list.querySelector('.js-camp-name[data-id="' + id + '"]');
+          var taglineEl = list.querySelector('.js-camp-tagline[data-id="' + id + '"]');
+          var imageEl = list.querySelector('.js-camp-image[data-id="' + id + '"]');
+          var name = nameEl ? nameEl.value.trim() : '';
+          if (!name) { alert('Campaign name is required.'); return; }
+          api('updateCampaign', {
+            id: id,
+            name: name,
+            tagline: taglineEl ? taglineEl.value.trim() : '',
+            cardImageUrl: imageEl ? imageEl.value.trim() : '',
+          }).then(function(r) {
             if (!r.ok) { alert(r.error || 'Failed'); return; }
             mergeApp(r);
           });
@@ -1409,7 +1434,7 @@
 
       var pList = document.getElementById('player-admin-list');
       if (!pList) return;
-      var players = (APP.allPlayers || APP.players || []).slice();
+      var players = sortPlayersByName(APP.allPlayers || APP.players || []);
       if (!players.length) {
         pList.innerHTML = '<div class="cal-sync-note">No players configured.</div>';
       } else {
@@ -1420,36 +1445,24 @@
               '<strong>' + esc(p.displayName || p.id) + '</strong>' +
               '<span style="font-size:11px;color:var(--text-mute);">' + (p.isActive ? 'active' : 'inactive') + '</span>' +
             '</div>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">' +
+              '<input type="text" class="js-player-name" data-id="' + esc(p.id) + '" value="' + esc(p.displayName || '') + '" placeholder="Player name" style="flex:1;min-width:160px;"/>' +
+              '<button type="button" class="small-btn js-player-save" data-id="' + esc(p.id) + '">Save</button>' +
+            '</div>' +
             '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">' +
-              '<button type="button" class="small-btn js-player-rename" data-id="' + esc(p.id) + '">Rename</button>' +
-              '<button type="button" class="small-btn js-player-sort" data-id="' + esc(p.id) + '" data-sort="' + esc(String(p.sortOrder || 0)) + '">Sort</button>' +
               (p.isActive ? '<button type="button" class="small-btn js-player-remove" data-id="' + esc(p.id) + '">Deactivate</button>' : '<button type="button" class="small-btn js-player-activate" data-id="' + esc(p.id) + '">Activate</button>') +
             '</div>' +
           '</div>';
         });
         pList.innerHTML = ph;
       }
-      pList.querySelectorAll('.js-player-rename').forEach(function(btn) {
+      pList.querySelectorAll('.js-player-save').forEach(function(btn) {
         btn.addEventListener('click', function() {
           var id = this.getAttribute('data-id');
-          var existing = (APP.allPlayers || []).find(function(p) { return p.id === id; });
-          if (!existing) return;
-          var displayName = prompt('Player name', existing.displayName || '');
-          if (!displayName) return;
+          var nameEl = pList.querySelector('.js-player-name[data-id="' + id + '"]');
+          var displayName = nameEl ? nameEl.value.trim() : '';
+          if (!displayName) { alert('Player name is required.'); return; }
           api('updatePlayer', { id: id, displayName: displayName }).then(function(r) {
-            if (!r.ok) { alert(r.error || 'Failed'); return; }
-            mergeApp(r);
-          });
-        });
-      });
-      pList.querySelectorAll('.js-player-sort').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var id = this.getAttribute('data-id');
-          var existing = (APP.allPlayers || []).find(function(p) { return p.id === id; });
-          if (!existing) return;
-          var sortOrder = prompt('Sort order', String(existing.sortOrder || 0));
-          if (sortOrder == null) return;
-          api('updatePlayer', { id: id, sortOrder: Number(sortOrder) || 0 }).then(function(r) {
             if (!r.ok) { alert(r.error || 'Failed'); return; }
             mergeApp(r);
           });
@@ -1475,19 +1488,31 @@
     }
 
     document.getElementById('btnCampaignAdd').addEventListener('click', function() {
-      var name = prompt('New campaign name');
-      if (!name) return;
-      var tagline = prompt('Tagline (optional)') || '';
-      api('createCampaign', { name: name, tagline: tagline, status: 'active' }).then(function(r) {
+      var nameEl = document.getElementById('newCampaignName');
+      var taglineEl = document.getElementById('newCampaignTagline');
+      var imageEl = document.getElementById('newCampaignImage');
+      var name = nameEl ? nameEl.value.trim() : '';
+      if (!name) { alert('Campaign name is required.'); return; }
+      api('createCampaign', {
+        name: name,
+        tagline: taglineEl ? taglineEl.value.trim() : '',
+        cardImageUrl: imageEl ? imageEl.value.trim() : '',
+        status: 'active'
+      }).then(function(r) {
         if (!r.ok) { alert(r.error || 'Failed'); return; }
+        if (nameEl) nameEl.value = '';
+        if (taglineEl) taglineEl.value = '';
+        if (imageEl) imageEl.value = '';
         mergeApp(r);
       });
     });
     document.getElementById('btnPlayerAdd').addEventListener('click', function() {
-      var displayName = prompt('New player name');
-      if (!displayName) return;
+      var input = document.getElementById('newPlayerName');
+      var displayName = input ? input.value.trim() : '';
+      if (!displayName) { alert('Player name is required.'); return; }
       api('createPlayer', { displayName: displayName }).then(function(r) {
         if (!r.ok) { alert(r.error || 'Failed'); return; }
+        if (input) input.value = '';
         mergeApp(r);
       });
     });

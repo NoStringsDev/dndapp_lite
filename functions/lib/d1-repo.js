@@ -13,7 +13,7 @@ export class D1Repo {
 
   async listActivePlayers() {
     const res = await this._db
-      .prepare('SELECT id, display_name, sort_order, is_active FROM players WHERE is_active = 1 ORDER BY sort_order ASC, display_name ASC')
+      .prepare('SELECT id, display_name, sort_order, is_active FROM players WHERE is_active = 1 ORDER BY LOWER(display_name) ASC, display_name ASC')
       .all();
     return (res.results || []).map(r => ({
       id: r.id,
@@ -26,7 +26,7 @@ export class D1Repo {
   async listPlayers(includeInactive = true) {
     const where = includeInactive ? '' : 'WHERE is_active = 1';
     const res = await this._db
-      .prepare(`SELECT id, display_name, sort_order, is_active FROM players ${where} ORDER BY is_active DESC, sort_order ASC, display_name ASC`)
+      .prepare(`SELECT id, display_name, sort_order, is_active FROM players ${where} ORDER BY LOWER(display_name) ASC, display_name ASC`)
       .all();
     return (res.results || []).map(r => ({
       id: r.id,

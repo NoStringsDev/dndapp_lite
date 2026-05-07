@@ -567,11 +567,10 @@ export async function createPlayer(payload, repo) {
     let id = base;
     let i = 2;
     while (ids.has(id)) id = `${base}_${i++}`;
-    const maxSort = existing.reduce((m, p) => Math.max(m, Number(p.sortOrder || 0)), -1);
     await repo.createPlayer({
       id,
       displayName,
-      sortOrder: maxSort + 1,
+      sortOrder: 0,
       isActive: true,
     });
     return { ok: true, ...(await buildAppPayload(repo, actorId)) };
@@ -592,9 +591,8 @@ export async function updatePlayer(payload, repo) {
     const current = all.find(p => p.id === id) || player;
     const displayName = String(payload?.displayName ?? current.displayName).trim();
     if (!displayName) return { ok: false, error: 'Player name is required.' };
-    const sortOrder = Number(payload?.sortOrder ?? current.sortOrder) || 0;
     const isActive = payload?.isActive === undefined ? current.isActive : Boolean(payload.isActive);
-    await repo.updatePlayer({ id, displayName, sortOrder, isActive });
+    await repo.updatePlayer({ id, displayName, sortOrder: current.sortOrder || 0, isActive });
     return { ok: true, ...(await buildAppPayload(repo, actorId)) };
   } catch (err) {
     return { ok: false, error: String(err) };
