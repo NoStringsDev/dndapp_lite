@@ -1,8 +1,10 @@
 import { D1Repo } from '../lib/d1-repo.js';
+import { ensureSchema } from '../lib/ensure-schema.js';
 import { getCalendarFeedIcsByToken } from '../lib/service.js';
 
 export async function onRequestGet(ctx) {
   try {
+    if (ctx.env.DB) await ensureSchema(ctx.env.DB);
     const repo = new D1Repo(ctx.env.DB);
     const tokenRaw = String(ctx.params?.token || '').trim();
     const token = tokenRaw.endsWith('.ics') ? tokenRaw.slice(0, -4) : tokenRaw;

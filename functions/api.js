@@ -3,6 +3,7 @@
  */
 
 import { D1Repo } from './lib/d1-repo.js';
+import { ensureSchema } from './lib/ensure-schema.js';
 import * as svc from './lib/service.js';
 
 const SESSION_COOKIE = 'dndlite_session';
@@ -15,6 +16,10 @@ export async function onRequestPost(ctx) {
     const action = body.action || '';
     const payload = body.payload ?? null;
 
+    if (!env.DB) {
+      return json({ ok: false, error: 'Database binding (DB) is not configured on this deployment.' });
+    }
+    await ensureSchema(env.DB);
     const repo = new D1Repo(env.DB);
     const actor = await resolveActor(request, repo);
     const result = await route(action, payload, actor, env, repo, request);
