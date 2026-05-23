@@ -145,6 +145,21 @@ async function route(action, payload, actor, env, repo, request) {
     case 'getSingleEventCalendarIcs':
       return svc.getSingleEventCalendarIcs(payload, repo);
 
+    case 'addPlayer':
+      return requireAuth(actor, () =>
+        svc.addPlayer({ ...payload, playerId: actor.playerId }, repo)
+      );
+
+    case 'renamePlayer':
+      return requireAuth(actor, () =>
+        svc.renamePlayer({ ...payload, playerId: actor.playerId }, repo)
+      );
+
+    case 'setPlayerActive':
+      return requireAuth(actor, () =>
+        svc.setPlayerActive({ ...payload, playerId: actor.playerId }, repo)
+      );
+
     default:
       return { ok: false, error: `Unknown action: ${action}` };
   }

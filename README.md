@@ -17,7 +17,7 @@ A small **Cloudflare Pages + D1** web app for one D&D party: mark availability o
 4. Optionally copy `.dev.vars.example` to `.dev.vars` and set `GROUP_SECRET` if you want to test the password gate locally.
 5. `npm run dev` and open the URL Wrangler prints (usually `http://localhost:8788`).
 
-On the calendar, **Yes / Maybe / No** are stored as `available` / `maybe` / `unavailable` in D1. Default roster (Chris, Emil, Jose, Aidan, Tim) is created by the migration. Add more players later with `INSERT` into `players` in the D1 console or a SQL file.
+On the calendar, **Yes / Maybe / No** are stored as `available` / `maybe` / `unavailable` in D1. Default roster (Chris, Emil, Jose, Aidan, Tim) is created by the migration. After signing in, open the **Manage players** panel to add, rename, deactivate or reactivate players from within the app — no SQL needed. Deactivated players keep their vote history and historical bookings still show their names.
 
 ## Production
 

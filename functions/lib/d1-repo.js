@@ -23,6 +23,47 @@ export class D1Repo {
     }));
   }
 
+  async listAllPlayers() {
+    const res = await this._db
+      .prepare('SELECT id, display_name, sort_order, is_active FROM players ORDER BY is_active DESC, sort_order ASC, display_name ASC')
+      .all();
+    return (res.results || []).map(r => ({
+      id: r.id,
+      displayName: r.display_name,
+      sortOrder: r.sort_order,
+      isActive: !!r.is_active,
+    }));
+  }
+
+  async getMaxPlayerSortOrder() {
+    const row = await this._db
+      .prepare('SELECT MAX(sort_order) AS max_so FROM players')
+      .first();
+    if (!row || row.max_so == null) return -1;
+    return Number(row.max_so);
+  }
+
+  async createPlayer({ id, displayName, sortOrder, isActive }) {
+    await this._db
+      .prepare('INSERT INTO players (id, display_name, sort_order, is_active) VALUES (?, ?, ?, ?)')
+      .bind(id, displayName, Number(sortOrder) || 0, isActive ? 1 : 0)
+      .run();
+  }
+
+  async updatePlayer(id, { displayName, sortOrder, isActive }) {
+    const sets = [];
+    const binds = [];
+    if (displayName !== undefined) { sets.push('display_name = ?'); binds.push(displayName); }
+    if (sortOrder !== undefined) { sets.push('sort_order = ?'); binds.push(Number(sortOrder) || 0); }
+    if (isActive !== undefined) { sets.push('is_active = ?'); binds.push(isActive ? 1 : 0); }
+    if (!sets.length) return;
+    binds.push(id);
+    await this._db
+      .prepare(`UPDATE players SET ${sets.join(', ')} WHERE id = ?`)
+      .bind(...binds)
+      .run();
+  }
+
   async getPlayerById(id) {
     const row = await this._db
       .prepare('SELECT id, display_name, sort_order, is_active FROM players WHERE id = ?')
