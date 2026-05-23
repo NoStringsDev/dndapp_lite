@@ -36,6 +36,18 @@ export class D1Repo {
     }));
   }
 
+  async listAllPlayers() {
+    return this.listPlayers(true);
+  }
+
+  async getMaxPlayerSortOrder() {
+    const row = await this._db
+      .prepare('SELECT MAX(sort_order) AS max_so FROM players')
+      .first();
+    if (!row || row.max_so == null) return -1;
+    return Number(row.max_so);
+  }
+
   async getPlayerById(id) {
     const row = await this._db
       .prepare('SELECT id, display_name, sort_order, is_active FROM players WHERE id = ?')
@@ -50,17 +62,34 @@ export class D1Repo {
     };
   }
 
-  async createPlayer(row) {
+  async createPlayer({ id, displayName, sortOrder, isActive }) {
     await this._db
       .prepare('INSERT INTO players (id, display_name, sort_order, is_active) VALUES (?, ?, ?, ?)')
-      .bind(row.id, row.displayName, row.sortOrder || 0, row.isActive ? 1 : 0)
+      .bind(id, displayName, Number(sortOrder) || 0, isActive ? 1 : 0)
       .run();
   }
 
-  async updatePlayer(row) {
+  async updatePlayer(idOrRow, patch) {
+    let id;
+    let displayName;
+    let sortOrder;
+    let isActive;
+    if (typeof idOrRow === 'string') {
+      id = idOrRow;
+      const existing = await this.getPlayerById(id);
+      if (!existing) return;
+      displayName = patch?.displayName !== undefined ? patch.displayName : existing.displayName;
+      sortOrder = patch?.sortOrder !== undefined ? patch.sortOrder : existing.sortOrder;
+      isActive = patch?.isActive !== undefined ? patch.isActive : existing.isActive;
+    } else {
+      id = idOrRow.id;
+      displayName = idOrRow.displayName;
+      sortOrder = idOrRow.sortOrder || 0;
+      isActive = idOrRow.isActive;
+    }
     await this._db
       .prepare('UPDATE players SET display_name = ?, sort_order = ?, is_active = ? WHERE id = ?')
-      .bind(row.displayName, row.sortOrder || 0, row.isActive ? 1 : 0, row.id)
+      .bind(displayName, Number(sortOrder) || 0, isActive ? 1 : 0, id)
       .run();
   }
 

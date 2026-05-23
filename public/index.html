@@ -322,6 +322,34 @@
   }
   .cal-feed-url { font-size: 10px; color: #4a7050; word-break: break-all; margin-bottom: 10px; }
   .cal-feed-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .roster-section-label {
+    font-size: 9px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--text-mute);
+    margin: 4px 0 8px; font-weight: 500;
+  }
+  .roster-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .roster-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: 8px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border-md);
+  }
+  .roster-row.inactive { opacity: 0.65; }
+  .roster-name {
+    flex: 1; min-width: 0;
+    font-size: 13px; color: var(--text);
+    font-family: var(--font-serif);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .roster-row.inactive .roster-name { color: var(--text-mute); font-style: italic; }
+  .roster-row .small-btn { padding: 6px 10px; min-height: 32px; }
+  .roster-row .small-btn.danger { color: #d4a8a8; border-color: #7a5a5a; }
+  .roster-row .small-btn.danger:hover { color: #e8c0c0; border-color: #966a6a; }
+  .roster-add-form { display: flex; gap: 8px; }
+  .roster-add-form input[type="text"] { flex: 1; padding: 8px 10px; font-size: 13px; }
+  .roster-add-form .small-btn { padding: 8px 14px; min-height: 36px; }
+  .roster-empty { font-size: 11px; color: var(--text-mute); padding: 4px 0 8px; }
   .small-btn {
     font-size: 11px; padding: 8px 13px;
     border-radius: 7px; border: 1px solid var(--border-md);
@@ -767,6 +795,34 @@
           </details>
         </div>
       </div>
+      <div class="cal-sync-wrap" id="roster-box">
+        <button
+          type="button"
+          class="cal-sync-toggle"
+          id="btnToggleRosterPanel"
+          aria-expanded="false"
+          aria-controls="roster-panel"
+        >
+          <span>
+            <span class="cal-sync-title">Manage players</span>
+            <span class="cal-sync-hint">Add, rename or deactivate party members</span>
+          </span>
+          <span class="cal-sync-chevron">&#8964;</span>
+        </button>
+        <div class="cal-sync-panel" id="roster-panel" hidden>
+          <div class="cal-sync-note">Anyone signed in can manage the roster. Deactivated players keep their vote history.</div>
+          <div class="roster-section-label">Active players</div>
+          <div class="roster-list" id="rosterActiveList"></div>
+          <div class="roster-section-label" id="rosterInactiveLabel" style="display:none;">Deactivated</div>
+          <div class="roster-list" id="rosterInactiveList"></div>
+          <div class="roster-section-label">Add a player</div>
+          <form class="roster-add-form" id="rosterAddForm" autocomplete="off">
+            <input id="rosterAddName" type="text" maxlength="40" placeholder="New player name" aria-label="New player name"/>
+            <button type="submit" class="small-btn" id="btnRosterAdd">Add</button>
+          </form>
+          <p id="rosterErr" class="err" style="display:none;margin-top:10px;"></p>
+        </div>
+      </div>
       <div class="month-nav">
         <button type="button" class="month-nav-btn" id="btnMonthPrev" aria-label="Previous month">&#8249;</button>
         <span id="monthLabel" class="month-nav-title"></span>
@@ -836,7 +892,7 @@
 
   <script>
   (function(){
-    var APP = { dates: [], players: [], allPlayers: [], campaigns: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, pendingDetailIso: null, saveT: null, viewMonth: '', todayIso: '', hasScrolledToToday: false, editBooking: false, _editSnapshot: null, initialLoadPending: false, icsUrl: '', icsWebcalUrl: '', hasTriedSubscribe: false, selectedCampaignId: '' };
+    var APP = { dates: [], players: [], allPlayers: [], campaigns: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, pendingDetailIso: null, saveT: null, viewMonth: '', todayIso: '', hasScrolledToToday: false, editBooking: false, _editSnapshot: null, initialLoadPending: false, icsUrl: '', icsWebcalUrl: '', hasTriedSubscribe: false, me: null, selectedCampaignId: '' };
 
     /** True after successful login this page load; avoids boot()'s stale authMe failing later and calling showGate(). */
     var loginWonRace = false;
@@ -1444,12 +1500,14 @@
       if (r.fullTableDates) APP.fullTableDates = r.fullTableDates;
       if (r.arcadiaDefaultLocation) APP.arcadiaDefaultLocation = r.arcadiaDefaultLocation;
       if (r.todayIso) APP.todayIso = r.todayIso;
+      if (r.me) APP.me = r.me;
       if (r.me && r.me.displayName) document.getElementById('dispName').textContent = r.me.displayName;
       ensureViewMonth();
       renderConfirmed();
       renderDayList();
       renderGateSessions(APP.campaigns || [], APP.confirmedGames || []);
       renderManagePage();
+      renderRoster();
       if (!APP.hasScrolledToToday && APP.todayIso) {
         APP.hasScrolledToToday = true;
         requestAnimationFrame(function() {
@@ -1475,6 +1533,147 @@
         showGate();
       });
     }
+
+    function setRosterError(msg) {
+      var el = document.getElementById('rosterErr');
+      if (!el) return;
+      if (msg) {
+        el.textContent = msg;
+        el.style.display = 'block';
+      } else {
+        el.textContent = '';
+        el.style.display = 'none';
+      }
+    }
+
+    function renderRoster() {
+      var activeEl = document.getElementById('rosterActiveList');
+      var inactiveEl = document.getElementById('rosterInactiveList');
+      var inactiveLabel = document.getElementById('rosterInactiveLabel');
+      if (!activeEl || !inactiveEl || !inactiveLabel) return;
+      var roster = (APP.allPlayers && APP.allPlayers.length) ? APP.allPlayers : (APP.players || []);
+      var active = roster.filter(function(p) { return p.isActive; });
+      var inactive = roster.filter(function(p) { return !p.isActive; });
+      var meId = APP.me ? APP.me.id : '';
+      var canDeactivate = active.length > 1;
+
+      function rowHtml(p, isActive) {
+        var isMe = p.id === meId;
+        var disableDeact = !canDeactivate || isMe;
+        var deactTitle = isMe ? 'You cannot deactivate yourself' : (!canDeactivate ? 'At least one player must remain active' : 'Deactivate');
+        var actions = '';
+        if (isActive) {
+          actions =
+            '<button type="button" class="small-btn js-roster-rename" data-id="' + esc(p.id) + '" data-name="' + esc(p.displayName) + '">Rename</button>' +
+            '<button type="button" class="small-btn danger js-roster-deactivate" data-id="' + esc(p.id) + '" data-name="' + esc(p.displayName) + '"' + (disableDeact ? ' disabled' : '') + ' title="' + esc(deactTitle) + '">Deactivate</button>';
+        } else {
+          actions =
+            '<button type="button" class="small-btn js-roster-rename" data-id="' + esc(p.id) + '" data-name="' + esc(p.displayName) + '">Rename</button>' +
+            '<button type="button" class="small-btn js-roster-reactivate" data-id="' + esc(p.id) + '" data-name="' + esc(p.displayName) + '">Reactivate</button>';
+        }
+        return '<div class="roster-row' + (isActive ? '' : ' inactive') + '">' +
+          '<span class="roster-name">' + esc(p.displayName) + (isMe ? ' (you)' : '') + '</span>' +
+          actions +
+          '</div>';
+      }
+
+      if (!active.length) {
+        activeEl.innerHTML = '<div class="roster-empty">No active players.</div>';
+      } else {
+        activeEl.innerHTML = active.map(function(p) { return rowHtml(p, true); }).join('');
+      }
+      if (!inactive.length) {
+        inactiveEl.innerHTML = '';
+        inactiveLabel.style.display = 'none';
+      } else {
+        inactiveEl.innerHTML = inactive.map(function(p) { return rowHtml(p, false); }).join('');
+        inactiveLabel.style.display = '';
+      }
+
+      activeEl.querySelectorAll('.js-roster-rename').forEach(function(btn) {
+        btn.addEventListener('click', function() { promptRename(this.getAttribute('data-id'), this.getAttribute('data-name')); });
+      });
+      activeEl.querySelectorAll('.js-roster-deactivate').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          if (this.disabled) return;
+          confirmSetActive(this.getAttribute('data-id'), this.getAttribute('data-name'), false);
+        });
+      });
+      inactiveEl.querySelectorAll('.js-roster-rename').forEach(function(btn) {
+        btn.addEventListener('click', function() { promptRename(this.getAttribute('data-id'), this.getAttribute('data-name')); });
+      });
+      inactiveEl.querySelectorAll('.js-roster-reactivate').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          confirmSetActive(this.getAttribute('data-id'), this.getAttribute('data-name'), true);
+        });
+      });
+    }
+
+    function promptRename(id, currentName) {
+      setRosterError('');
+      var next = window.prompt('Rename player', currentName || '');
+      if (next == null) return;
+      var trimmed = String(next).trim();
+      if (!trimmed) { setRosterError('Name cannot be empty.'); return; }
+      if (trimmed === currentName) return;
+      api('renamePlayer', { id: id, displayName: trimmed }).then(function(r) {
+        if (!r.ok) { setRosterError(r.error || 'Rename failed.'); return; }
+        mergeApp(r);
+      });
+    }
+
+    function confirmSetActive(id, name, isActive) {
+      setRosterError('');
+      var verb = isActive ? 'Reactivate' : 'Deactivate';
+      var detail = isActive
+        ? 'Reactivate ' + name + '? They will reappear on the calendar, full-table calculation and booking lists.'
+        : 'Deactivate ' + name + '? They will no longer count toward full-table or appear as a booking option. Their vote history is preserved and you can reactivate them later.';
+      if (!window.confirm(detail)) return;
+      api('setPlayerActive', { id: id, isActive: isActive }).then(function(r) {
+        if (!r.ok) { setRosterError(r.error || (verb + ' failed.')); return; }
+        mergeApp(r);
+      });
+    }
+
+    function setRosterPanelOpen(isOpen) {
+      var wrap = document.getElementById('roster-box');
+      var panel = document.getElementById('roster-panel');
+      var btn = document.getElementById('btnToggleRosterPanel');
+      if (!wrap || !panel || !btn) return;
+      if (isOpen) {
+        wrap.classList.add('open');
+        panel.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+      } else {
+        wrap.classList.remove('open');
+        panel.hidden = true;
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    }
+
+    document.getElementById('btnToggleRosterPanel').addEventListener('click', function() {
+      var isOpen = this.getAttribute('aria-expanded') === 'true';
+      setRosterPanelOpen(!isOpen);
+    });
+
+    document.getElementById('rosterAddForm').addEventListener('submit', function(ev) {
+      ev.preventDefault();
+      setRosterError('');
+      var input = document.getElementById('rosterAddName');
+      var name = (input.value || '').trim();
+      if (!name) { setRosterError('Enter a player name.'); return; }
+      var btn = document.getElementById('btnRosterAdd');
+      btn.disabled = true;
+      api('addPlayer', { displayName: name }).then(function(r) {
+        btn.disabled = false;
+        if (!r.ok) { setRosterError(r.error || 'Could not add player.'); return; }
+        input.value = '';
+        mergeApp(r);
+      }).catch(function() {
+        btn.disabled = false;
+        setRosterError('Network error.');
+      });
+    });
 
     function renderIcsUi() {
       var el = document.getElementById('ics-url');
@@ -2370,6 +2569,7 @@
 
     function boot() {
       setIcsPanelOpen(false);
+      setRosterPanelOpen(false);
       api('authMe', {}).then(function(r) {
         if (r.ok && r.me) {
           loginWonRace = true;

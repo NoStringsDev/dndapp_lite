@@ -225,6 +225,33 @@ function normaliseTime(value, fallback) {
   return /^\d{2}:\d{2}$/.test(t) ? t : fallback;
 }
 
+function slugifyPlayerId(name) {
+  const base = String(name || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32);
+  return base;
+}
+
+async function uniquePlayerId(repo, baseId) {
+  let candidate = baseId || 'player';
+  let suffix = 1;
+  while (await repo.getPlayerById(candidate)) {
+    suffix += 1;
+    candidate = `${baseId || 'player'}-${suffix}`.slice(0, 40);
+  }
+  return candidate;
+}
+
+function normaliseDisplayName(value) {
+  return String(value == null ? '' : value).trim().replace(/\s+/g, ' ').slice(0, 40);
+}
+
+const MAX_PLAYERS = 50;
+
 function toConfirmedGames(bookings, nameById, campaignById) {
   return (bookings || []).map(b => {
     const campaign = campaignById[b.campaignId] || fallbackCampaignForBooking(b);
@@ -304,8 +331,8 @@ export async function authMe(sessionId, repo) {
 }
 
 async function buildAppPayload(repo, playerId) {
-  const players = await repo.listActivePlayers();
   const allPlayers = await repo.listPlayers(true);
+  const players = allPlayers.filter(p => p.isActive);
   const campaigns = sortCampaigns(await repo.listCampaigns());
   const dates = rollingDateIsos();
   const votesByDate = await repo.getAllVotesForDates(dates);
@@ -315,14 +342,14 @@ async function buildAppPayload(repo, playerId) {
   const fullTableDates = [];
   for (const iso of dates) {
     const v = votesByDate[iso] || {};
-    const ok = activeIds.every(id => (v[id] || '') === 'available');
+    const ok = activeIds.length > 0 && activeIds.every(id => (v[id] || '') === 'available');
     if (ok) fullTableDates.push(iso);
   }
 
   const today = isoDateInTimeZone(new Date(), TZ);
   const rangeStart = addDaysLondon(today, -ROLLING_PAST_DAYS);
   const bookings = await repo.listBookingsFrom(rangeStart);
-  const nameById = Object.fromEntries(players.map(p => [p.id, p.displayName]));
+  const nameById = Object.fromEntries(allPlayers.map(p => [p.id, p.displayName]));
   const me = await repo.getPlayerById(playerId);
 
   const campaignById = Object.fromEntries(campaigns.map(c => [c.id, c]));
@@ -350,6 +377,114 @@ async function buildAppPayload(repo, playerId) {
     defaultStart: '18:30',
     defaultEnd: '22:00',
   };
+}
+
+export async function addPlayer(payload, repo) {
+  try {
+    const actorId = String(payload?.playerId || '').trim();
+    if (!actorId) return { ok: false, error: 'Not authenticated.' };
+    const displayName = normaliseDisplayName(payload?.displayName);
+    if (!displayName) return { ok: false, error: 'Enter a player name.' };
+    if (displayName.length < 1) return { ok: false, error: 'Name is too short.' };
+
+    const allPlayers = await repo.listAllPlayers();
+    if (allPlayers.length >= MAX_PLAYERS) {
+      return { ok: false, error: `Roster is full (max ${MAX_PLAYERS}).` };
+    }
+    const nameTakenBy = allPlayers.find(
+      p => p.displayName.toLowerCase() === displayName.toLowerCase()
+    );
+    if (nameTakenBy) {
+      if (!nameTakenBy.isActive) {
+        return {
+          ok: false,
+          error: `A player named "${nameTakenBy.displayName}" exists but is deactivated. Reactivate them instead.`,
+        };
+      }
+      return { ok: false, error: 'A player with that name already exists.' };
+    }
+
+    const baseId = slugifyPlayerId(displayName) || 'player';
+    const id = await uniquePlayerId(repo, baseId);
+    const maxSo = await repo.getMaxPlayerSortOrder();
+    const sortOrder = Number.isFinite(maxSo) ? maxSo + 1 : 0;
+    await repo.createPlayer({ id, displayName, sortOrder, isActive: true });
+
+    const data = await buildAppPayload(repo, actorId);
+    return { ok: true, addedPlayer: { id, displayName }, ...data };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+export async function renamePlayer(payload, repo) {
+  try {
+    const actorId = String(payload?.playerId || '').trim();
+    if (!actorId) return { ok: false, error: 'Not authenticated.' };
+    const targetId = String(payload?.id || '').trim();
+    const displayName = normaliseDisplayName(payload?.displayName);
+    if (!targetId) return { ok: false, error: 'Missing player id.' };
+    if (!displayName) return { ok: false, error: 'Enter a player name.' };
+
+    const target = await repo.getPlayerById(targetId);
+    if (!target) return { ok: false, error: 'Unknown player.' };
+    if (target.displayName === displayName) {
+      const data = await buildAppPayload(repo, actorId);
+      return { ok: true, ...data };
+    }
+
+    const allPlayers = await repo.listAllPlayers();
+    const clash = allPlayers.find(
+      p => p.id !== targetId && p.displayName.toLowerCase() === displayName.toLowerCase()
+    );
+    if (clash) return { ok: false, error: 'Another player already uses that name.' };
+
+    await repo.updatePlayer(targetId, { displayName });
+    const data = await buildAppPayload(repo, actorId);
+    return { ok: true, ...data };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+export async function setPlayerActive(payload, repo) {
+  try {
+    const actorId = String(payload?.playerId || '').trim();
+    if (!actorId) return { ok: false, error: 'Not authenticated.' };
+    const targetId = String(payload?.id || '').trim();
+    const isActive = !!payload?.isActive;
+    if (!targetId) return { ok: false, error: 'Missing player id.' };
+
+    const target = await repo.getPlayerById(targetId);
+    if (!target) return { ok: false, error: 'Unknown player.' };
+
+    if (!isActive) {
+      if (targetId === actorId) {
+        return { ok: false, error: 'You cannot deactivate yourself while signed in.' };
+      }
+      const activeCount = (await repo.listActivePlayers()).length;
+      if (target.isActive && activeCount <= 1) {
+        return { ok: false, error: 'At least one player must remain active.' };
+      }
+    }
+
+    if (target.isActive === isActive) {
+      const data = await buildAppPayload(repo, actorId);
+      return { ok: true, ...data };
+    }
+
+    const patch = { isActive };
+    if (isActive) {
+      const maxSo = await repo.getMaxPlayerSortOrder();
+      patch.sortOrder = Number.isFinite(maxSo) ? maxSo + 1 : 0;
+    }
+    await repo.updatePlayer(targetId, patch);
+
+    const data = await buildAppPayload(repo, actorId);
+    return { ok: true, ...data };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
 }
 
 export async function getAppData(payload, repo) {
@@ -458,14 +593,6 @@ function slugifyCampaignName(name) {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
     .slice(0, 50) || 'campaign';
-}
-
-function slugifyPlayerId(name) {
-  return String(name || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 24) || 'player';
 }
 
 function randomCampaignId() {
