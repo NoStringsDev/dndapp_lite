@@ -90,18 +90,42 @@
   .btn-ghost { background: transparent; border: 1px solid var(--border-md); color: var(--text-dim); }
   .row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
 
-  .gate-page { background: var(--bg); padding-bottom: 48px; }
-  .gate-welcome { padding: 28px 20px 20px; text-align: center; }
+  .gate-page {
+    background: var(--bg);
+    min-height: 100dvh;
+    max-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  }
+  .gate-welcome { flex: 0 0 auto; padding: 14px 16px 8px; text-align: center; }
   .gate-welcome-title {
     font-family: var(--font-serif);
-    font-size: 23px; font-weight: 600;
+    font-size: 20px; font-weight: 600;
     color: var(--text); letter-spacing: 0.01em;
+  }
+  #gate .campaign-cards {
+    flex: 1 1 0;
+    min-height: 0;
+    padding: 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: hidden;
+  }
+  #gate .campaign-card {
+    border-radius: 12px; overflow: hidden;
+    position: relative; border: 1px solid var(--border-md);
+    flex: 1 1 0;
+    min-height: 68px;
+    display: flex; flex-direction: column; justify-content: flex-end;
   }
   .campaign-cards { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; }
   .campaign-card {
     border-radius: 14px; overflow: hidden;
     position: relative; border: 1px solid var(--border-md);
-    min-height: 260px;
+    min-height: 130px;
     display: flex; flex-direction: column; justify-content: flex-end;
   }
   .campaign-card-bg { position: absolute; inset: 0; }
@@ -123,6 +147,21 @@
   .campaign-card.arc .campaign-card-scrim {
     background: linear-gradient(to bottom, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.15) 40%, rgba(0,0,0,0.72) 100%);
   }
+  #gate .campaign-card-content {
+    padding: 9px 12px 11px;
+  }
+  #gate .campaign-card-name { font-size: 17px; }
+  #gate .campaign-session-item { font-size: 10px; line-height: 1.3; }
+  #gate .campaign-session-item.next-upcoming { font-size: 11px; }
+  #gate .campaign-session-hint { font-size: 9px; margin-top: 2px; }
+  #gate .campaign-sessions { margin-top: 5px; gap: 2px; }
+  #gate .campaign-session-more {
+    font-size: 9px;
+    letter-spacing: 0.02em;
+    line-height: 1.3;
+    margin-top: 1px;
+    opacity: 0.9;
+  }
   .campaign-card-content {
     position: relative; z-index: 2;
     padding: 14px 16px 16px;
@@ -131,7 +170,7 @@
   .campaign-card-tag {
     font-size: 9px; letter-spacing: 0.2em;
     text-transform: uppercase; font-weight: 700; margin-bottom: 5px;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.85), 0 2px 12px rgba(0,0,0,0.7);
+    text-shadow: 0 1px 6px rgba(0,0,0,0.65);
   }
   .campaign-card-tag.gh { color: rgba(190,240,195,0.90); }
   .campaign-card-tag.arc { color: rgba(210,195,255,0.90); }
@@ -139,7 +178,7 @@
     font-family: var(--font-display);
     font-size: 19px; font-weight: 700;
     letter-spacing: 0.05em; line-height: 1.15;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 2px 16px rgba(0,0,0,0.8);
+    text-shadow: 0 1px 8px rgba(0,0,0,0.6);
   }
   .campaign-card.gh .campaign-card-name { color: #e8f8e8; }
   .campaign-card.arc .campaign-card-name { color: #e8e0ff; }
@@ -148,7 +187,7 @@
     font-size: 11px; letter-spacing: 0.02em; line-height: 1.4;
     text-align: left; background: transparent; border: none; padding: 0;
     font-family: var(--font-sans); cursor: pointer;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.85), 0 2px 10px rgba(0,0,0,0.75);
+    text-shadow: 0 1px 6px rgba(0,0,0,0.6);
   }
   .campaign-session-item.next-upcoming {
     font-size: 12px;
@@ -163,6 +202,28 @@
   .campaign-card.gh .campaign-session-item.next-upcoming { color: rgba(235,255,240,0.98); }
   .campaign-card.arc .campaign-session-item { color: rgba(220,210,255,0.88); }
   .campaign-card.arc .campaign-session-item.next-upcoming { color: rgba(235,226,255,0.98); }
+  #gate .gate-player-section {
+    flex: 0 0 auto;
+    padding: 10px 16px 12px;
+  }
+  #gate .gate-register-label {
+    font-size: 15px;
+    margin-bottom: 10px;
+  }
+  #gate .player-grid {
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  #gate .player-choice {
+    padding: 10px 8px;
+    min-height: 44px;
+    font-size: 14px;
+  }
+  #gate .continue-btn {
+    padding: 12px;
+    min-height: 46px;
+  }
+  #gate .gate-manage-link { margin-top: 6px !important; }
   .gate-player-section { padding: 24px 16px 0; }
   .gate-register-label {
     font-family: var(--font-serif);
@@ -673,7 +734,7 @@
         <div id="playerPicker" class="player-grid" aria-label="Select your player"></div>
         <input id="playerSel" type="hidden" value=""/>
         <button type="button" class="continue-btn" id="btnLogin">Continue</button>
-        <div style="margin-top:10px;text-align:center;">
+        <div class="gate-manage-link" style="margin-top:10px;text-align:center;">
           <button type="button" class="small-btn" id="btnOpenManageFromGate">Edit campaigns & players</button>
         </div>
         <p id="gateErr" class="err" style="display:none;margin-top:10px;"></p>
@@ -1055,8 +1116,37 @@
       return 'rgba(' + parts[0] + ',' + parts[1] + ',' + parts[2] + ',' + alpha + ')';
     }
 
-    var CARD_TEXT_SHADOW = '0 1px 2px rgba(0,0,0,0.85), 0 2px 14px rgba(0,0,0,0.75)';
-    var CARD_TEXT_SHADOW_STRONG = '0 1px 3px rgba(0,0,0,0.95), 0 3px 18px rgba(0,0,0,0.88), 0 0 1px rgba(0,0,0,0.95)';
+    var CARD_TEXT_SHADOW = '0 1px 6px rgba(0,0,0,0.55)';
+    var CARD_TEXT_SHADOW_STRONG = '0 1px 3px rgba(0,0,0,0.75), 0 2px 12px rgba(0,0,0,0.65)';
+    var GATE_MAX_SESSIONS_PER_CARD = 2;
+
+    function lightenHex(hex, amount) {
+      var h = String(hex || '').replace('#', '');
+      if (h.length !== 6) return hex || '#e8e8e8';
+      var r = parseInt(h.slice(0, 2), 16);
+      var g = parseInt(h.slice(2, 4), 16);
+      var b = parseInt(h.slice(4, 6), 16);
+      var a = Math.max(0, Math.min(1, amount));
+      return rgbToHex(
+        Math.round(r + (255 - r) * a),
+        Math.round(g + (255 - g) * a),
+        Math.round(b + (255 - b) * a)
+      );
+    }
+
+    function hexToRgba(hex, alpha) {
+      var h = String(hex || '').replace('#', '');
+      if (h.length !== 6) return 'rgba(232,240,232,' + alpha + ')';
+      return 'rgba(' +
+        parseInt(h.slice(0, 2), 16) + ',' +
+        parseInt(h.slice(2, 4), 16) + ',' +
+        parseInt(h.slice(4, 6), 16) + ',' + alpha + ')';
+    }
+
+    function ensureReadableCampaignText(textOnAccent, accentColor, needsBoost) {
+      if (!needsBoost || luminanceFromHex(textOnAccent) > 0.55) return textOnAccent;
+      return lightenHex(accentColor, 0.62);
+    }
 
     function luminanceFromRgba(rgba) {
       var m = String(rgba || '').match(/^rgba?\(([^)]+)\)$/i);
@@ -1071,34 +1161,26 @@
       var t = themeForCampaign(campaign);
       var accentLum = luminanceFromHex(t.accentColor);
       var overlayLum = luminanceFromRgba(t.overlayColor);
-      var isDarkArt = accentLum < 0.34 || overlayLum < 0.28;
-      var overlayStrength = isDarkArt ? 0.90 : (accentLum > 0.55 ? 0.76 : 0.70);
-      var neutralStrong = 'rgba(4,6,10,' + overlayStrength + ')';
-      var neutralMid = 'rgba(4,6,10,' + Math.max(0.44, overlayStrength - 0.28) + ')';
-      var strongOverlay = isDarkArt ? neutralStrong : rgbaAlpha(t.overlayColor, overlayStrength);
-      var midOverlay = isDarkArt ? neutralMid : rgbaAlpha(t.overlayColor, Math.max(0.34, overlayStrength - 0.20));
-      var filterAlpha = isDarkArt ? 0.07 : (accentLum > 0.55 ? 0.10 : 0.14);
-      var textColor = t.textOnAccent;
-      if (isDarkArt && luminanceFromHex(textColor) < 0.58) textColor = '#f5f2eb';
-      var textShadow = isDarkArt ? CARD_TEXT_SHADOW_STRONG : CARD_TEXT_SHADOW;
+      var needsTextBoost = accentLum < 0.34 || overlayLum < 0.32;
+      var overlayStrength = needsTextBoost ? 0.56 : (accentLum > 0.55 ? 0.66 : 0.60);
+      var strongOverlay = rgbaAlpha(t.overlayColor, overlayStrength);
+      var midOverlay = rgbaAlpha(t.overlayColor, Math.max(0.20, overlayStrength - 0.26));
+      var filterAlpha = accentLum > 0.55 ? 0.12 : 0.17;
+      var textColor = ensureReadableCampaignText(t.textOnAccent, t.accentColor, needsTextBoost);
+      var textShadow = needsTextBoost ? CARD_TEXT_SHADOW_STRONG : CARD_TEXT_SHADOW;
       return {
         t: t,
-        isDarkArt: isDarkArt,
         textColor: textColor,
-        tagColor: isDarkArt ? '#f0ebe3' : t.accentColor,
-        sessionColor: isDarkArt ? 'rgba(245,242,235,0.94)' : textColor,
-        sessionUpcomingColor: isDarkArt ? '#ffffff' : textColor,
+        tagColor: t.accentColor,
+        sessionColor: hexToRgba(t.accentColor, 0.88),
+        sessionUpcomingColor: textColor,
         textShadow: textShadow,
-        filterColor: rgbaAlpha(isDarkArt ? 'rgba(255,255,255,0.12)' : t.accentSoftColor, filterAlpha),
-        scrim: isDarkArt
-          ? 'linear-gradient(to bottom, rgba(0,0,0,0.20) 0%, ' + midOverlay + ' 32%, ' + strongOverlay + ' 70%, rgba(0,0,0,0.94) 100%)'
-          : 'linear-gradient(to bottom, rgba(0,0,0,0.04) 0%, ' + midOverlay + ' 44%, ' + strongOverlay + ' 100%)',
-        confirmedScrim: isDarkArt
-          ? 'linear-gradient(to right, ' + strongOverlay + ' 0%, ' + midOverlay + ' 52%, rgba(0,0,0,0.28) 100%)'
-          : 'linear-gradient(to right, ' + strongOverlay + ' 0%, ' + midOverlay + ' 58%, rgba(0,0,0,0.18) 100%)',
-        statusBg: isDarkArt ? 'rgba(0,0,0,0.52)' : rgbaAlpha(t.accentSoftColor, 0.38),
-        statusBorder: isDarkArt ? 'rgba(255,255,255,0.24)' : t.borderColor,
-        statusColor: isDarkArt ? '#f0ebe3' : t.accentColor,
+        filterColor: rgbaAlpha(t.accentSoftColor, filterAlpha),
+        scrim: 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.04) 55%, ' + midOverlay + ' 82%, ' + strongOverlay + ' 100%)',
+        confirmedScrim: 'linear-gradient(to right, ' + strongOverlay + ' 0%, ' + midOverlay + ' 58%, rgba(0,0,0,0.14) 100%)',
+        statusBg: rgbaAlpha(t.accentSoftColor, 0.40),
+        statusBorder: t.borderColor,
+        statusColor: t.accentColor,
       };
     }
 
@@ -1197,18 +1279,21 @@
           var isDarkArt = avgLum < 0.40;
           var r = picked.r, g = picked.g, b = picked.b;
           var accent = rgbToHex(r, g, b);
+          var textOnAccent = pickTextOnAccent(accent);
+          if (isDarkArt && luminanceFromHex(textOnAccent) < 0.55) textOnAccent = lightenHex(accent, 0.58);
           resolve({
             themeMode: 'auto',
             accentColor: accent,
-            accentSoftColor: isDarkArt ? 'rgba(255,255,255,0.14)' : rgbaFromRgb(r, g, b, 0.20),
-            textOnAccent: isDarkArt ? '#f5f2eb' : pickTextOnAccent(accent),
-            overlayColor: isDarkArt
-              ? 'rgba(5,7,11,0.82)'
-              : rgbaFromRgb(Math.max(0, r - 28), Math.max(0, g - 28), Math.max(0, b - 28), 0.64),
-            borderColor: isDarkArt
-              ? '#3a3f48'
-              : rgbToHex(Math.max(0, r - 38), Math.max(0, g - 38), Math.max(0, b - 38)),
-            pillColor: isDarkArt ? 'rgba(255,255,255,0.14)' : rgbaFromRgb(r, g, b, 0.16),
+            accentSoftColor: rgbaFromRgb(r, g, b, isDarkArt ? 0.22 : 0.20),
+            textOnAccent: textOnAccent,
+            overlayColor: rgbaFromRgb(
+              Math.max(0, r - 28),
+              Math.max(0, g - 28),
+              Math.max(0, b - 28),
+              isDarkArt ? 0.54 : 0.58
+            ),
+            borderColor: rgbToHex(Math.max(0, r - 38), Math.max(0, g - 38), Math.max(0, b - 38)),
+            pillColor: rgbaFromRgb(r, g, b, 0.16),
           });
         }).catch(function() {
           resolve(fallbackTheme());
@@ -2316,12 +2401,17 @@
         var items = '';
         var v = campaignVisualStyle(c);
         var t = v.t;
-        upcoming.filter(function(g) { return g.campaignId === c.id; }).forEach(function(g) {
+        var campaignSessions = upcoming.filter(function(g) { return g.campaignId === c.id; });
+        var extraSessions = Math.max(0, campaignSessions.length - GATE_MAX_SESSIONS_PER_CARD);
+        campaignSessions.slice(0, GATE_MAX_SESSIONS_PER_CARD).forEach(function(g) {
         var label = formatLong(g.date, g.startTime);
         var cls = 'campaign-session-item' + (sessionId(g) === firstUpcomingId ? ' next-upcoming' : '');
         var sessionColor = sessionId(g) === firstUpcomingId ? v.sessionUpcomingColor : v.sessionColor;
         items += '<button type="button" class="' + cls + ' js-gate-session" data-iso="' + esc(g.date) + '" style="color:' + esc(sessionColor) + ';text-shadow:' + esc(v.textShadow) + ';">' + esc(label) + '</button>';
       });
+        if (extraSessions > 0) {
+          items += '<div class="campaign-session-more" style="color:' + esc(v.sessionColor) + ';text-shadow:' + esc(v.textShadow) + ';">+' + extraSessions + ' more session' + (extraSessions === 1 ? '' : 's') + '</div>';
+        }
         var statusTag = c.isCurrent ? 'Current campaign' : (c.status === 'parked' ? 'Parked' : 'Also playing');
         html += '<div class="campaign-card" style="border-color:' + esc(t.borderColor) + ';" data-campaign-id="' + esc(c.id) + '">' +
           '<div class="campaign-card-bg">' +
