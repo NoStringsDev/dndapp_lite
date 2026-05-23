@@ -127,6 +127,41 @@ async function route(action, payload, actor, env, repo, request) {
         svc.confirmSession({ ...payload, playerId: actor.playerId }, repo)
       );
 
+    case 'createCampaign':
+      return requireAuth(actor, () =>
+        svc.createCampaign({ ...payload, playerId: actor.playerId }, repo)
+      );
+
+    case 'updateCampaign':
+      return requireAuth(actor, () =>
+        svc.updateCampaign({ ...payload, playerId: actor.playerId }, repo)
+      );
+
+    case 'setCurrentCampaign':
+      return requireAuth(actor, () =>
+        svc.setCurrentCampaign({ ...payload, playerId: actor.playerId }, repo)
+      );
+
+    case 'setCampaignStatus':
+      return requireAuth(actor, () =>
+        svc.setCampaignStatus({ ...payload, playerId: actor.playerId }, repo)
+      );
+
+    case 'createPlayer':
+      return requireAuth(actor, () =>
+        svc.createPlayer({ ...payload, playerId: actor.playerId }, repo)
+      );
+
+    case 'updatePlayer':
+      return requireAuth(actor, () =>
+        svc.updatePlayer({ ...payload, playerId: actor.playerId }, repo)
+      );
+
+    case 'removePlayer':
+      return requireAuth(actor, () =>
+        svc.removePlayer({ ...payload, playerId: actor.playerId }, repo)
+      );
+
     case 'unconfirmSession':
       return requireAuth(actor, () =>
         svc.unconfirmSession({ ...payload, playerId: actor.playerId }, repo)

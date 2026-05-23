@@ -13,7 +13,20 @@ export class D1Repo {
 
   async listActivePlayers() {
     const res = await this._db
-      .prepare('SELECT id, display_name, sort_order, is_active FROM players WHERE is_active = 1 ORDER BY sort_order ASC, display_name ASC')
+      .prepare('SELECT id, display_name, sort_order, is_active FROM players WHERE is_active = 1 ORDER BY LOWER(display_name) ASC, display_name ASC')
+      .all();
+    return (res.results || []).map(r => ({
+      id: r.id,
+      displayName: r.display_name,
+      sortOrder: r.sort_order,
+      isActive: !!r.is_active,
+    }));
+  }
+
+  async listPlayers(includeInactive = true) {
+    const where = includeInactive ? '' : 'WHERE is_active = 1';
+    const res = await this._db
+      .prepare(`SELECT id, display_name, sort_order, is_active FROM players ${where} ORDER BY LOWER(display_name) ASC, display_name ASC`)
       .all();
     return (res.results || []).map(r => ({
       id: r.id,
@@ -24,15 +37,7 @@ export class D1Repo {
   }
 
   async listAllPlayers() {
-    const res = await this._db
-      .prepare('SELECT id, display_name, sort_order, is_active FROM players ORDER BY is_active DESC, sort_order ASC, display_name ASC')
-      .all();
-    return (res.results || []).map(r => ({
-      id: r.id,
-      displayName: r.display_name,
-      sortOrder: r.sort_order,
-      isActive: !!r.is_active,
-    }));
+    return this.listPlayers(true);
   }
 
   async getMaxPlayerSortOrder() {
@@ -41,27 +46,6 @@ export class D1Repo {
       .first();
     if (!row || row.max_so == null) return -1;
     return Number(row.max_so);
-  }
-
-  async createPlayer({ id, displayName, sortOrder, isActive }) {
-    await this._db
-      .prepare('INSERT INTO players (id, display_name, sort_order, is_active) VALUES (?, ?, ?, ?)')
-      .bind(id, displayName, Number(sortOrder) || 0, isActive ? 1 : 0)
-      .run();
-  }
-
-  async updatePlayer(id, { displayName, sortOrder, isActive }) {
-    const sets = [];
-    const binds = [];
-    if (displayName !== undefined) { sets.push('display_name = ?'); binds.push(displayName); }
-    if (sortOrder !== undefined) { sets.push('sort_order = ?'); binds.push(Number(sortOrder) || 0); }
-    if (isActive !== undefined) { sets.push('is_active = ?'); binds.push(isActive ? 1 : 0); }
-    if (!sets.length) return;
-    binds.push(id);
-    await this._db
-      .prepare(`UPDATE players SET ${sets.join(', ')} WHERE id = ?`)
-      .bind(...binds)
-      .run();
   }
 
   async getPlayerById(id) {
@@ -76,6 +60,176 @@ export class D1Repo {
       sortOrder: row.sort_order,
       isActive: !!row.is_active,
     };
+  }
+
+  async createPlayer({ id, displayName, sortOrder, isActive }) {
+    await this._db
+      .prepare('INSERT INTO players (id, display_name, sort_order, is_active) VALUES (?, ?, ?, ?)')
+      .bind(id, displayName, Number(sortOrder) || 0, isActive ? 1 : 0)
+      .run();
+  }
+
+  async updatePlayer(idOrRow, patch) {
+    let id;
+    let displayName;
+    let sortOrder;
+    let isActive;
+    if (typeof idOrRow === 'string') {
+      id = idOrRow;
+      const existing = await this.getPlayerById(id);
+      if (!existing) return;
+      displayName = patch?.displayName !== undefined ? patch.displayName : existing.displayName;
+      sortOrder = patch?.sortOrder !== undefined ? patch.sortOrder : existing.sortOrder;
+      isActive = patch?.isActive !== undefined ? patch.isActive : existing.isActive;
+    } else {
+      id = idOrRow.id;
+      displayName = idOrRow.displayName;
+      sortOrder = idOrRow.sortOrder || 0;
+      isActive = idOrRow.isActive;
+    }
+    await this._db
+      .prepare('UPDATE players SET display_name = ?, sort_order = ?, is_active = ? WHERE id = ?')
+      .bind(displayName, Number(sortOrder) || 0, isActive ? 1 : 0, id)
+      .run();
+  }
+
+  async deactivatePlayer(id) {
+    await this._db
+      .prepare('UPDATE players SET is_active = 0 WHERE id = ?')
+      .bind(id)
+      .run();
+  }
+
+  _mapCampaign(row) {
+    if (!row) return null;
+    return {
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      tagline: row.tagline || '',
+      status: row.status || 'active',
+      isCurrent: !!row.is_current,
+      sortOrder: row.sort_order || 0,
+      cardImageUrl: row.card_image_url || '',
+      accentKey: row.accent_key || '',
+      themeMode: row.theme_mode || 'auto',
+      accentColor: row.accent_color || '#7ab880',
+      accentSoftColor: row.accent_soft_color || 'rgba(122,184,128,0.18)',
+      textOnAccent: row.text_on_accent || '#e8f8e8',
+      overlayColor: row.overlay_color || 'rgba(0,0,0,0.70)',
+      borderColor: row.border_color || '#2e5030',
+      pillColor: row.pill_color || 'rgba(255,255,255,0.10)',
+      defaultStartTime: row.default_start_time || '18:30',
+      defaultEndTime: row.default_end_time || '22:00',
+      defaultLocation: row.default_location || '',
+      attendanceMode: row.attendance_mode || 'select_players',
+      createdAt: row.created_at || '',
+      updatedAt: row.updated_at || '',
+    };
+  }
+
+  async listCampaigns() {
+    const res = await this._db
+      .prepare(
+        "SELECT id, slug, name, tagline, status, is_current, sort_order, card_image_url, accent_key, theme_mode, accent_color, accent_soft_color, text_on_accent, overlay_color, border_color, pill_color, default_start_time, default_end_time, default_location, attendance_mode, created_at, updated_at FROM campaigns ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'parked' THEN 1 ELSE 2 END ASC, is_current DESC, sort_order ASC, name ASC"
+      )
+      .all();
+    return (res.results || []).map(r => this._mapCampaign(r));
+  }
+
+  async listBookableCampaigns() {
+    const res = await this._db
+      .prepare(
+        "SELECT id, slug, name, tagline, status, is_current, sort_order, card_image_url, accent_key, theme_mode, accent_color, accent_soft_color, text_on_accent, overlay_color, border_color, pill_color, default_start_time, default_end_time, default_location, attendance_mode, created_at, updated_at FROM campaigns WHERE status = 'active' ORDER BY is_current DESC, sort_order ASC, name ASC"
+      )
+      .all();
+    return (res.results || []).map(r => this._mapCampaign(r));
+  }
+
+  async getCampaignById(id) {
+    const row = await this._db
+      .prepare(
+        'SELECT id, slug, name, tagline, status, is_current, sort_order, card_image_url, accent_key, theme_mode, accent_color, accent_soft_color, text_on_accent, overlay_color, border_color, pill_color, default_start_time, default_end_time, default_location, attendance_mode, created_at, updated_at FROM campaigns WHERE id = ?'
+      )
+      .bind(id)
+      .first();
+    return this._mapCampaign(row);
+  }
+
+  async createCampaign(row) {
+    await this._db
+      .prepare(
+        'INSERT INTO campaigns (id, slug, name, tagline, status, is_current, sort_order, card_image_url, accent_key, theme_mode, accent_color, accent_soft_color, text_on_accent, overlay_color, border_color, pill_color, default_start_time, default_end_time, default_location, attendance_mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+      .bind(
+        row.id,
+        row.slug,
+        row.name,
+        row.tagline || '',
+        row.status || 'active',
+        row.isCurrent ? 1 : 0,
+        row.sortOrder || 0,
+        row.cardImageUrl || '',
+        row.accentKey || '',
+        row.themeMode || 'auto',
+        row.accentColor || '#7ab880',
+        row.accentSoftColor || 'rgba(122,184,128,0.18)',
+        row.textOnAccent || '#e8f8e8',
+        row.overlayColor || 'rgba(0,0,0,0.70)',
+        row.borderColor || '#2e5030',
+        row.pillColor || 'rgba(255,255,255,0.10)',
+        row.defaultStartTime || '18:30',
+        row.defaultEndTime || '22:00',
+        row.defaultLocation || '',
+        row.attendanceMode || 'select_players',
+        row.createdAt,
+        row.updatedAt
+      )
+      .run();
+  }
+
+  async updateCampaign(row) {
+    await this._db
+      .prepare(
+        'UPDATE campaigns SET slug = ?, name = ?, tagline = ?, status = ?, sort_order = ?, card_image_url = ?, accent_key = ?, theme_mode = ?, accent_color = ?, accent_soft_color = ?, text_on_accent = ?, overlay_color = ?, border_color = ?, pill_color = ?, default_start_time = ?, default_end_time = ?, default_location = ?, attendance_mode = ?, updated_at = ? WHERE id = ?'
+      )
+      .bind(
+        row.slug,
+        row.name,
+        row.tagline || '',
+        row.status || 'active',
+        row.sortOrder || 0,
+        row.cardImageUrl || '',
+        row.accentKey || '',
+        row.themeMode || 'auto',
+        row.accentColor || '#7ab880',
+        row.accentSoftColor || 'rgba(122,184,128,0.18)',
+        row.textOnAccent || '#e8f8e8',
+        row.overlayColor || 'rgba(0,0,0,0.70)',
+        row.borderColor || '#2e5030',
+        row.pillColor || 'rgba(255,255,255,0.10)',
+        row.defaultStartTime || '18:30',
+        row.defaultEndTime || '22:00',
+        row.defaultLocation || '',
+        row.attendanceMode || 'select_players',
+        row.updatedAt,
+        row.id
+      )
+      .run();
+  }
+
+  async setCurrentCampaign(campaignId) {
+    await this._db.batch([
+      this._db.prepare('UPDATE campaigns SET is_current = 0 WHERE is_current = 1'),
+      this._db.prepare('UPDATE campaigns SET is_current = 1, updated_at = ? WHERE id = ?').bind(new Date().toISOString(), campaignId),
+    ]);
+  }
+
+  async setCampaignStatus(campaignId, status, updatedAt) {
+    await this._db
+      .prepare('UPDATE campaigns SET status = ?, updated_at = ? WHERE id = ?')
+      .bind(status, updatedAt, campaignId)
+      .run();
   }
 
   async getVotesForPlayer(playerId) {
@@ -146,7 +300,7 @@ export class D1Repo {
   async getBooking(date) {
     const row = await this._db
       .prepare(
-        'SELECT date, kind, start_time, end_time, location, attendee_player_ids, created_at, created_by_player_id FROM bookings WHERE date = ?'
+        'SELECT date, kind, campaign_id, start_time, end_time, location, attendee_player_ids, created_at, created_by_player_id FROM bookings WHERE date = ?'
       )
       .bind(date)
       .first();
@@ -154,6 +308,7 @@ export class D1Repo {
     return {
       date: row.date,
       kind: row.kind,
+      campaignId: row.campaign_id || '',
       startTime: row.start_time,
       endTime: row.end_time,
       location: row.location || '',
@@ -168,13 +323,14 @@ export class D1Repo {
   async listBookingsFrom(fromIsoDate) {
     const res = await this._db
       .prepare(
-        'SELECT date, kind, start_time, end_time, location, attendee_player_ids, created_at, created_by_player_id FROM bookings WHERE date >= ? ORDER BY date ASC'
+        'SELECT date, kind, campaign_id, start_time, end_time, location, attendee_player_ids, created_at, created_by_player_id FROM bookings WHERE date >= ? ORDER BY date ASC'
       )
       .bind(fromIsoDate)
       .all();
     return (res.results || []).map(row => ({
       date: row.date,
       kind: row.kind,
+      campaignId: row.campaign_id || '',
       startTime: row.start_time,
       endTime: row.end_time,
       location: row.location || '',
@@ -189,11 +345,12 @@ export class D1Repo {
   async upsertBooking(row) {
     await this._db
       .prepare(
-        'INSERT OR REPLACE INTO bookings (date, kind, start_time, end_time, location, attendee_player_ids, created_at, created_by_player_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT OR REPLACE INTO bookings (date, kind, campaign_id, start_time, end_time, location, attendee_player_ids, created_at, created_by_player_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
       )
       .bind(
         row.date,
         row.kind,
+        row.campaignId || '',
         row.startTime,
         row.endTime,
         row.location || '',
