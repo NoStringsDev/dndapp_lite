@@ -60,3 +60,18 @@ After login, the app shows an **https://…/calendar/&lt;token&gt;.ics** URL. Su
 ## Optional: local `.dev.vars`
 
 For `wrangler pages dev`, you can create `.dev.vars` (gitignored) with `GROUP_SECRET=...` to test the password gate. Omit `GROUP_SECRET` to match production “name only” behaviour. See `.dev.vars.example`.
+
+## Optional: Google Maps address search
+
+To enable address autocomplete when editing a campaign’s default venue, add in **Pages → Settings → Environment variables** (and `.dev.vars` locally):
+
+| Name | Type | Value |
+|------|------|-------|
+| `GOOGLE_MAPS_API_KEY` | Secret | API key with **Places API** enabled |
+
+In [Google Cloud Console](https://console.cloud.google.com/), enable **Maps JavaScript API** and **Places API**, then restrict the key to your site (HTTP referrers). For local dev, include:
+
+- `http://localhost:8788/*`
+- your production domain (e.g. `https://your-app.pages.dev/*`)
+
+Copy `.dev.vars.example` to `.dev.vars` and set `GOOGLE_MAPS_API_KEY=...`, then restart `npm run dev`. Without this variable, the address field works as plain editable text.

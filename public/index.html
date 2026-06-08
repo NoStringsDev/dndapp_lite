@@ -475,6 +475,24 @@
   .preview-confirmed-time { font-size: 11px; color: rgba(240,235,225,0.88); }
   .preview-chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
   .preview-chip { font-size: 10px; border-radius: 999px; padding: 2px 8px; border: 1px solid transparent; }
+  .manage-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .manage-status-label { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 8px; margin: 0; text-transform: none; letter-spacing: 0; }
+  .manage-status-select { width: auto; min-width: 130px; padding: 8px 10px; }
+  .manage-add-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+  .manage-add-row input { flex: 1; min-width: 160px; }
+  .manage-campaign-row { display: flex; flex-direction: column; gap: 8px; }
+  .manage-campaign-actions { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 2px 4px; }
+  .js-manage-camp-card { cursor: pointer; min-height: 110px; }
+  .color-chit-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .color-chit-label { font-size: 12px; color: var(--text-dim); min-width: 72px; }
+  .color-chit {
+    width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border-md);
+    padding: 0; cursor: pointer; flex-shrink: 0;
+  }
+  .hidden-color-picker { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .opacity-slider { flex: 1; min-width: 80px; max-width: 140px; accent-color: #7ab880; }
+  .camp-edit-preview-wrap { margin-top: 10px; }
+  .pac-container { z-index: 10000; }
   .month-nav {
     display: flex; align-items: center;
     justify-content: space-between; margin-bottom: 12px;
@@ -758,6 +776,88 @@
     </div>
   </div>
 
+  <div id="campaign-edit-page" class="screen hidden">
+    <div class="app-header">
+      <div>
+        <div class="app-title" id="campEditTitle">Edit campaign</div>
+        <div class="app-sub" id="campEditSub">Identity &amp; theme</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button type="button" class="small-btn" id="btnCampEditSave">Save</button>
+        <button type="button" class="signout-btn" id="btnBackToManageFromEdit">Back</button>
+      </div>
+    </div>
+    <div class="content">
+      <div class="editor-block">
+        <div class="editor-block-title">Identity</div>
+        <div class="editor-grid">
+          <input type="text" id="campEditName" placeholder="Campaign name"/>
+          <input type="text" id="campEditTagline" placeholder="Tagline"/>
+          <input type="text" id="campEditImage" placeholder="Artwork URL"/>
+          <img id="campEditImagePreview" alt="Campaign artwork preview" style="width:100%;max-height:140px;object-fit:cover;border:1px solid var(--border);border-radius:8px;display:none;"/>
+        </div>
+      </div>
+      <div class="editor-block">
+        <div class="editor-block-title">Default address</div>
+        <input type="text" id="campEditLocation" placeholder="Default venue address" autocomplete="off"/>
+        <div class="editor-help" id="campEditLocationHint">Search for a venue or address, then edit if needed (e.g. add a flat number).</div>
+      </div>
+      <div class="editor-block">
+        <div class="editor-block-title">Theme</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
+          <label style="margin:0;font-size:11px;color:var(--text-dim);text-transform:none;letter-spacing:0;">Mode</label>
+          <select id="campEditThemeMode" style="width:auto;min-width:130px;padding:8px 10px;">
+            <option value="auto">Auto from artwork</option>
+            <option value="manual">Manual</option>
+          </select>
+          <button type="button" class="small-btn" id="btnCampEditGenerateTheme">Generate theme</button>
+          <button type="button" class="small-btn" id="btnCampEditApplyAuto">Apply auto suggestion</button>
+        </div>
+        <div id="campEditManualColors" class="hidden">
+          <div class="color-chit-row">
+            <span class="color-chit-label">Accent</span>
+            <button type="button" class="color-chit" id="campEditAccentChit" aria-label="Accent colour"></button>
+            <input type="color" id="campEditAccentPicker" class="hidden-color-picker" tabindex="-1"/>
+          </div>
+          <div class="color-chit-row">
+            <span class="color-chit-label">Card text</span>
+            <button type="button" class="color-chit" id="campEditTextChit" aria-label="Card text colour"></button>
+            <input type="color" id="campEditTextPicker" class="hidden-color-picker" tabindex="-1"/>
+          </div>
+          <div class="color-chit-row">
+            <span class="color-chit-label">Soft tint</span>
+            <button type="button" class="color-chit" id="campEditSoftChit" aria-label="Soft tint colour"></button>
+            <input type="color" id="campEditSoftPicker" class="hidden-color-picker" tabindex="-1"/>
+            <input type="range" class="opacity-slider" id="campEditSoftAlpha" min="0" max="100" value="18" aria-label="Soft tint opacity"/>
+          </div>
+          <div class="color-chit-row">
+            <span class="color-chit-label">Overlay</span>
+            <button type="button" class="color-chit" id="campEditOverlayChit" aria-label="Overlay colour"></button>
+            <input type="color" id="campEditOverlayPicker" class="hidden-color-picker" tabindex="-1"/>
+            <input type="range" class="opacity-slider" id="campEditOverlayAlpha" min="0" max="100" value="70" aria-label="Overlay opacity"/>
+          </div>
+          <div class="color-chit-row">
+            <span class="color-chit-label">Border</span>
+            <button type="button" class="color-chit" id="campEditBorderChit" aria-label="Border colour"></button>
+            <input type="color" id="campEditBorderPicker" class="hidden-color-picker" tabindex="-1"/>
+          </div>
+          <div class="color-chit-row">
+            <span class="color-chit-label">Pill</span>
+            <button type="button" class="color-chit" id="campEditPillChit" aria-label="Pill colour"></button>
+            <input type="color" id="campEditPillPicker" class="hidden-color-picker" tabindex="-1"/>
+            <input type="range" class="opacity-slider" id="campEditPillAlpha" min="0" max="100" value="10" aria-label="Pill opacity"/>
+          </div>
+        </div>
+        <div class="camp-edit-preview-wrap">
+          <div class="preview-cards">
+            <div><div class="preview-title">Login card preview</div><div id="campEditPreviewLogin"></div></div>
+            <div><div class="preview-title">Confirmed card preview</div><div id="campEditPreviewConfirmed"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="manage-page" class="screen hidden">
     <div class="app-header">
       <div>
@@ -773,35 +873,20 @@
       </div>
       <div id="manageCampaignsTab">
       <div class="section-label">Campaigns</div>
-      <div style="margin-bottom:10px;">
+      <div class="manage-toolbar">
+        <label class="manage-status-label" for="manageStatusFilter">
+          Show
+          <select id="manageStatusFilter" class="manage-status-select">
+            <option value="active">Active</option>
+            <option value="parked">Parked</option>
+            <option value="archived">Archived</option>
+          </select>
+        </label>
         <button type="button" class="small-btn" id="btnToggleNewCampaignForm">Add campaign</button>
       </div>
-      <div id="newCampaignFormWrap" class="hidden" style="margin-bottom:10px;border:1px solid var(--border);border-radius:10px;padding:10px;">
-        <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">New campaign details</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <input id="newCampaignName" type="text" placeholder="Campaign name" style="flex:1;min-width:160px;"/>
-          <input id="newCampaignTagline" type="text" placeholder="Tagline (optional)" style="flex:1;min-width:160px;"/>
-          <input id="newCampaignImage" type="text" placeholder="Artwork URL (optional)" style="flex:1;min-width:200px;"/>
-          <button type="button" class="small-btn" id="btnCampaignAdd">Save new campaign</button>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center;">
-          <label style="margin:0;font-size:11px;color:var(--text-dim);text-transform:none;letter-spacing:0;">Theme</label>
-          <select id="newCampaignThemeMode" style="width:auto;min-width:130px;padding:8px 10px;">
-            <option value="auto" selected>Auto from artwork</option>
-            <option value="manual">Manual</option>
-          </select>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-          <input id="newCampaignAccentColor" type="text" placeholder="Accent hex (#RRGGBB)"/>
-          <input id="newCampaignTextOnAccent" type="text" placeholder="Text hex (#RRGGBB)"/>
-          <input id="newCampaignAccentSoft" type="text" placeholder="Soft accent (rgba)"/>
-          <input id="newCampaignOverlayColor" type="text" placeholder="Overlay (rgba)"/>
-          <input id="newCampaignBorderColor" type="text" placeholder="Border hex (#RRGGBB)"/>
-          <input id="newCampaignPillColor" type="text" placeholder="Pill (rgba)"/>
-        </div>
-        <div style="margin-top:8px;">
-          <img id="newCampaignImagePreview" alt="New campaign artwork preview" style="width:100%;max-height:140px;object-fit:cover;border:1px solid var(--border);border-radius:8px;display:none;"/>
-        </div>
+      <div id="newCampaignFormWrap" class="hidden manage-add-row">
+        <input id="newCampaignName" type="text" placeholder="Campaign name"/>
+        <button type="button" class="small-btn" id="btnCampaignAdd">Create</button>
       </div>
       <div id="campaign-admin-list" style="display:flex;flex-direction:column;gap:10px;"></div>
       </div>
@@ -926,7 +1011,8 @@
       </div>
       <div class="field">
         <label for="cfLoc">Location / notes</label>
-        <textarea id="cfLoc" placeholder="Address or 'Online'"></textarea>
+        <input type="text" id="cfLoc" placeholder="Address or 'Online'" autocomplete="off"/>
+        <div class="editor-help" id="cfLocHint" style="margin-top:6px;"></div>
       </div>
       <div class="field" id="cfAttWrap">
         <label>Players in this session</label>
@@ -955,7 +1041,7 @@
 
   <script>
   (function(){
-    var APP = { dates: [], players: [], allPlayers: [], campaigns: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, pendingDetailIso: null, saveT: null, viewMonth: '', todayIso: '', hasScrolledToToday: false, editBooking: false, _editSnapshot: null, initialLoadPending: false, icsUrl: '', icsWebcalUrl: '', hasTriedSubscribe: false, me: null, selectedCampaignId: '' };
+    var APP = { dates: [], players: [], allPlayers: [], campaigns: [], confirmedGames: [], fullTableDates: [], arcadiaDefaultLocation: '', pendingIso: null, pendingDetailIso: null, saveT: null, viewMonth: '', todayIso: '', hasScrolledToToday: false, editBooking: false, _editSnapshot: null, initialLoadPending: false, icsUrl: '', icsWebcalUrl: '', hasTriedSubscribe: false, me: null, selectedCampaignId: '', editingCampaignId: '', manageStatusFilter: 'active', googleMapsApiKey: '' };
 
     /** True after successful login this page load; avoids boot()'s stale authMe failing later and calling showGate(). */
     var loginWonRace = false;
@@ -1010,6 +1096,7 @@
       else sw.classList.add('hidden');
       APP.campaigns = (b.campaigns || []).slice();
       APP.confirmedGames = (b.confirmedGames || []).slice();
+      APP.googleMapsApiKey = (b.googleMapsApiKey || '').trim();
       renderGateSessions(APP.campaigns, APP.confirmedGames);
     }
 
@@ -1053,7 +1140,7 @@
     });
 
     function showScreen(screenId) {
-      ['gate', 'app', 'campaign-detail-page', 'manage-page'].forEach(function(id) {
+      ['gate', 'app', 'campaign-detail-page', 'manage-page', 'campaign-edit-page'].forEach(function(id) {
         var el = document.getElementById(id);
         if (!el) return;
         if (id === screenId) el.classList.remove('hidden');
@@ -1064,6 +1151,12 @@
     function showApp() { showScreen('app'); }
     function showCampaignDetail() { showScreen('campaign-detail-page'); }
     function showManagePage() { showScreen('manage-page'); }
+    function showCampaignEditPage(id) {
+      APP.editingCampaignId = id || '';
+      renderCampaignEditPage();
+      showScreen('campaign-edit-page');
+      initPlacesAutocomplete(document.getElementById('campEditLocation'), 'campEditLocationHint');
+    }
 
     function voteClass(v) {
       if (v === 'available') return 'avail';
@@ -1205,6 +1298,282 @@
 
     function rgbaFromRgb(r, g, b, a) {
       return 'rgba(' + [r|0, g|0, b|0].join(',') + ',' + a + ')';
+    }
+
+    function parseRgba(str) {
+      var m = String(str || '').match(/^rgba?\(([^)]+)\)$/i);
+      if (!m) return { r: 122, g: 184, b: 128, a: 0.18 };
+      var parts = m[1].split(',').map(function(x) { return parseFloat(x.trim()); });
+      if (parts.length < 3) return { r: 122, g: 184, b: 128, a: 0.18 };
+      return { r: parts[0] | 0, g: parts[1] | 0, b: parts[2] | 0, a: parts[3] != null ? parts[3] : 1 };
+    }
+
+    function setHexChit(chitEl, pickerEl, hex) {
+      var v = String(hex || '#7ab880');
+      if (!/^#[0-9a-fA-F]{6}$/.test(v)) v = '#7ab880';
+      if (pickerEl) pickerEl.value = v;
+      if (chitEl) chitEl.style.background = v;
+    }
+
+    function setRgbaChit(chitEl, pickerEl, sliderEl, rgba) {
+      var p = parseRgba(rgba);
+      var hex = rgbToHex(p.r, p.g, p.b);
+      if (pickerEl) pickerEl.value = hex;
+      if (sliderEl) sliderEl.value = String(Math.round(p.a * 100));
+      if (chitEl) chitEl.style.background = rgbaStr(p.r, p.g, p.b, p.a);
+    }
+
+    function rgbaStr(r, g, b, a) {
+      return 'rgba(' + (r | 0) + ',' + (g | 0) + ',' + (b | 0) + ',' + a + ')';
+    }
+
+    function getHexChit(pickerEl) {
+      return pickerEl ? pickerEl.value : '#7ab880';
+    }
+
+    function getRgbaChit(pickerEl, sliderEl) {
+      if (!pickerEl) return 'rgba(122,184,128,0.18)';
+      var h = pickerEl.value.replace('#', '');
+      var r = parseInt(h.slice(0, 2), 16);
+      var g = parseInt(h.slice(2, 4), 16);
+      var b = parseInt(h.slice(4, 6), 16);
+      var a = sliderEl ? (parseInt(sliderEl.value, 10) || 0) / 100 : 0.18;
+      return rgbaStr(r, g, b, a);
+    }
+
+    function wireColorChit(chitEl, pickerEl, sliderEl, onChange) {
+      if (!chitEl || !pickerEl) return;
+      chitEl.addEventListener('click', function() { pickerEl.click(); });
+      pickerEl.addEventListener('input', function() {
+        if (sliderEl) setRgbaChit(chitEl, pickerEl, sliderEl, getRgbaChit(pickerEl, sliderEl));
+        else setHexChit(chitEl, pickerEl, pickerEl.value);
+        if (onChange) onChange();
+      });
+      if (sliderEl) {
+        sliderEl.addEventListener('input', function() {
+          setRgbaChit(chitEl, pickerEl, sliderEl, getRgbaChit(pickerEl, sliderEl));
+          if (onChange) onChange();
+        });
+      }
+    }
+
+    var _placesLoadPromise = null;
+    var _placesAutocompleteById = {};
+    var LONDON_BIAS_BOUNDS = {
+      north: 51.70,
+      south: 51.28,
+      west: -0.51,
+      east: 0.33,
+    };
+
+    function loadGoogleMapsPlaces() {
+      var key = (APP.googleMapsApiKey || '').trim();
+      if (!key) return Promise.resolve(null);
+      if (window.google && window.google.maps && window.google.maps.places) return Promise.resolve(window.google.maps);
+      if (_placesLoadPromise) return _placesLoadPromise;
+      _placesLoadPromise = new Promise(function(resolve, reject) {
+        var cb = '__dndMapsInit_' + Date.now();
+        window[cb] = function() {
+          delete window[cb];
+          resolve(window.google && window.google.maps ? window.google.maps : null);
+        };
+        var s = document.createElement('script');
+        s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key) + '&libraries=places&callback=' + cb;
+        s.onerror = function() { reject(new Error('Maps load failed')); };
+        document.head.appendChild(s);
+      });
+      return _placesLoadPromise;
+    }
+
+    function applyPlaceToInput(input, place) {
+      if (!place || !input) return;
+      var addr = place.formatted_address || '';
+      if (place.name && addr && place.name !== addr) input.value = place.name + ', ' + addr;
+      else input.value = addr || place.name || input.value;
+    }
+
+    function updateLocationHint(hintId, status) {
+      var hint = hintId ? document.getElementById(hintId) : null;
+      if (!hint) return;
+      if (status === 'ready') {
+        hint.textContent = 'Search for a venue or address, then edit if needed (e.g. add a flat number).';
+        hint.style.display = '';
+      } else if (status === 'failed') {
+        hint.textContent = 'Address search could not load. Check the browser console, your API key, and that Maps JavaScript API + Places API are enabled.';
+        hint.style.display = '';
+      } else if (status === 'unconfigured') {
+        hint.textContent = '';
+        hint.style.display = 'none';
+      }
+    }
+
+    function initPlacesAutocomplete(input, hintId) {
+      if (!input || !input.id) return Promise.resolve();
+      if (_placesAutocompleteById[input.id]) {
+        updateLocationHint(hintId, (APP.googleMapsApiKey || '').trim() ? 'ready' : 'unconfigured');
+        return Promise.resolve();
+      }
+      var key = (APP.googleMapsApiKey || '').trim();
+      if (!key) {
+        updateLocationHint(hintId, 'unconfigured');
+        return Promise.resolve();
+      }
+      return loadGoogleMapsPlaces().then(function(maps) {
+        if (!maps || !maps.places) {
+          updateLocationHint(hintId, 'failed');
+          return;
+        }
+        var ac = new maps.places.Autocomplete(input, {
+          fields: ['formatted_address', 'name'],
+          bounds: LONDON_BIAS_BOUNDS,
+          strictBounds: false,
+        });
+        ac.addListener('place_changed', function() {
+          applyPlaceToInput(input, ac.getPlace());
+        });
+        _placesAutocompleteById[input.id] = ac;
+        updateLocationHint(hintId, 'ready');
+      }).catch(function() {
+        updateLocationHint(hintId, 'failed');
+      });
+    }
+
+    function renderManageCampaignCardHtml(c) {
+      var v = campaignVisualStyle(c);
+      var t = v.t;
+      var statusTag = c.isCurrent ? 'Current campaign' : (c.status === 'parked' ? 'Parked' : (c.status === 'archived' ? 'Archived' : 'Active'));
+      var tagline = c.tagline ? ('<div class="campaign-session-hint" style="color:' + esc(v.sessionColor) + ';text-shadow:' + esc(v.textShadow) + ';">' + esc(c.tagline) + '</div>') : '';
+      return '<div class="campaign-card js-manage-camp-card" style="border-color:' + esc(t.borderColor) + ';" data-campaign-id="' + esc(c.id) + '">' +
+        '<div class="campaign-card-bg">' +
+          (c.cardImageUrl ? '<img src="' + esc(c.cardImageUrl) + '" alt="' + esc(c.name || 'Campaign') + '" onerror="this.style.display=\'none\'"/>' : '') +
+        '</div>' +
+        '<div class="campaign-card-filter" style="background:' + esc(v.filterColor) + ';"></div>' +
+        '<div class="campaign-card-scrim" style="background:' + esc(v.scrim) + ';"></div>' +
+        '<div class="campaign-card-content">' +
+          '<div class="campaign-card-tag" style="color:' + esc(v.statusColor) + ';background:' + esc(v.statusBg) + ';border:1px solid ' + esc(v.statusBorder) + ';padding:3px 8px;border-radius:999px;display:inline-block;text-shadow:' + esc(v.textShadow) + ';">' + esc(statusTag) + '</div>' +
+          '<div class="campaign-card-name" style="color:' + esc(v.textColor) + ';text-shadow:' + esc(v.textShadow) + ';">' + esc(c.name || 'Campaign') + '</div>' +
+          tagline +
+        '</div>' +
+      '</div>';
+    }
+
+    function themeFromEditForm() {
+      var manual = (document.getElementById('campEditThemeMode') || {}).value === 'manual';
+      return {
+        themeMode: manual ? 'manual' : 'auto',
+        accentColor: getHexChit(document.getElementById('campEditAccentPicker')),
+        textOnAccent: getHexChit(document.getElementById('campEditTextPicker')),
+        accentSoftColor: getRgbaChit(document.getElementById('campEditSoftPicker'), document.getElementById('campEditSoftAlpha')),
+        overlayColor: getRgbaChit(document.getElementById('campEditOverlayPicker'), document.getElementById('campEditOverlayAlpha')),
+        borderColor: getHexChit(document.getElementById('campEditBorderPicker')),
+        pillColor: getRgbaChit(document.getElementById('campEditPillPicker'), document.getElementById('campEditPillAlpha')),
+      };
+    }
+
+    function applyThemeToEditChits(t) {
+      setHexChit(document.getElementById('campEditAccentChit'), document.getElementById('campEditAccentPicker'), t.accentColor);
+      setHexChit(document.getElementById('campEditTextChit'), document.getElementById('campEditTextPicker'), t.textOnAccent);
+      setRgbaChit(document.getElementById('campEditSoftChit'), document.getElementById('campEditSoftPicker'), document.getElementById('campEditSoftAlpha'), t.accentSoftColor);
+      setRgbaChit(document.getElementById('campEditOverlayChit'), document.getElementById('campEditOverlayPicker'), document.getElementById('campEditOverlayAlpha'), t.overlayColor);
+      setHexChit(document.getElementById('campEditBorderChit'), document.getElementById('campEditBorderPicker'), t.borderColor);
+      setRgbaChit(document.getElementById('campEditPillChit'), document.getElementById('campEditPillPicker'), document.getElementById('campEditPillAlpha'), t.pillColor);
+    }
+
+    function renderCampaignEditPreviews() {
+      var campaign = campaignById(APP.editingCampaignId) || {};
+      var nameEl = document.getElementById('campEditName');
+      var imageEl = document.getElementById('campEditImage');
+      var title = nameEl ? nameEl.value.trim() || 'Campaign' : 'Campaign';
+      var img = imageEl ? imageEl.value.trim() : '';
+      var t = themeFromEditForm();
+      var v = campaignVisualStyle(t);
+      var status = campaign.status || 'active';
+      var isCurrent = !!campaign.isCurrent;
+      var statusText = isCurrent ? 'Current campaign' : (status === 'parked' ? 'Parked' : (status === 'archived' ? 'Archived' : 'Also playing'));
+      var loginWrap = document.getElementById('campEditPreviewLogin');
+      var confirmedWrap = document.getElementById('campEditPreviewConfirmed');
+      if (loginWrap) {
+        loginWrap.innerHTML =
+          '<div class="preview-login-card" style="border-color:' + esc(t.borderColor) + ';">' +
+            '<div class="preview-bg" style="background-image:url(\'' + esc(img) + '\');"></div>' +
+            '<div class="preview-filter" style="background:' + esc(v.filterColor) + ';"></div>' +
+            '<div class="preview-scrim" style="background:' + esc(v.scrim) + ';"></div>' +
+            '<div class="preview-content">' +
+              '<span class="preview-status" style="color:' + esc(v.statusColor) + ';background:' + esc(v.statusBg) + ';border-color:' + esc(v.statusBorder) + ';text-shadow:' + esc(v.textShadow) + ';">' + esc(statusText) + '</span>' +
+              '<div class="preview-campaign-name" style="color:' + esc(v.textColor) + ';text-shadow:' + esc(v.textShadow) + ';">' + esc(title) + '</div>' +
+            '</div>' +
+          '</div>';
+      }
+      if (confirmedWrap) {
+        confirmedWrap.innerHTML =
+          '<div class="preview-confirmed-card" style="border-color:' + esc(t.borderColor) + ';">' +
+            '<div class="preview-bg" style="background-image:url(\'' + esc(img) + '\');"></div>' +
+            '<div class="preview-scrim" style="background:' + esc(v.confirmedScrim) + ';"></div>' +
+            '<div class="preview-content">' +
+              '<div class="preview-confirmed-label" style="color:' + esc(v.tagColor) + ';text-shadow:' + esc(v.textShadow) + ';">' + esc(title) + '</div>' +
+              '<div class="preview-confirmed-date" style="color:' + esc(v.textColor) + ';text-shadow:' + esc(v.textShadow) + ';">Sunday 18 May</div>' +
+              '<div class="preview-confirmed-time" style="text-shadow:' + esc(v.textShadow) + ';">18:30 – 22:00</div>' +
+              '<div class="preview-chip-row"><span class="preview-chip" style="background:' + esc(t.pillColor) + ';border-color:' + esc(t.borderColor) + ';color:' + esc(v.textColor) + ';">Chris</span><span class="preview-chip" style="background:' + esc(t.pillColor) + ';border-color:' + esc(t.borderColor) + ';color:' + esc(v.textColor) + ';">Emil</span></div>' +
+            '</div>' +
+          '</div>';
+      }
+    }
+
+    function renderCampaignEditPage() {
+      var campaign = campaignById(APP.editingCampaignId);
+      if (!campaign) return;
+      var t = themeForCampaign(campaign);
+      var titleEl = document.getElementById('campEditTitle');
+      var subEl = document.getElementById('campEditSub');
+      if (titleEl) titleEl.textContent = campaign.name || 'Edit campaign';
+      if (subEl) subEl.textContent = campaign.tagline || (campaign.isCurrent ? 'Current campaign' : 'Campaign settings');
+      var nameEl = document.getElementById('campEditName');
+      var taglineEl = document.getElementById('campEditTagline');
+      var imageEl = document.getElementById('campEditImage');
+      var locEl = document.getElementById('campEditLocation');
+      var modeEl = document.getElementById('campEditThemeMode');
+      var manualWrap = document.getElementById('campEditManualColors');
+      var preview = document.getElementById('campEditImagePreview');
+      if (nameEl) nameEl.value = campaign.name || '';
+      if (taglineEl) taglineEl.value = campaign.tagline || '';
+      if (imageEl) imageEl.value = campaign.cardImageUrl || '';
+      if (locEl) locEl.value = campaign.defaultLocation || '';
+      if (modeEl) modeEl.value = t.themeMode || 'auto';
+      if (manualWrap) manualWrap.classList.toggle('hidden', modeEl && modeEl.value !== 'manual');
+      if (preview) {
+        if (campaign.cardImageUrl) {
+          preview.src = campaign.cardImageUrl;
+          preview.style.display = '';
+        } else {
+          preview.style.display = 'none';
+          preview.removeAttribute('src');
+        }
+      }
+      applyThemeToEditChits(t);
+      renderCampaignEditPreviews();
+    }
+
+    function collectCampaignEditPayload() {
+      var id = APP.editingCampaignId;
+      var nameEl = document.getElementById('campEditName');
+      var taglineEl = document.getElementById('campEditTagline');
+      var imageEl = document.getElementById('campEditImage');
+      var locEl = document.getElementById('campEditLocation');
+      var t = themeFromEditForm();
+      return {
+        id: id,
+        name: nameEl ? nameEl.value.trim() : '',
+        tagline: taglineEl ? taglineEl.value.trim() : '',
+        cardImageUrl: imageEl ? imageEl.value.trim() : '',
+        defaultLocation: locEl ? locEl.value.trim() : '',
+        themeMode: t.themeMode,
+        accentColor: t.accentColor,
+        accentSoftColor: t.accentSoftColor,
+        textOnAccent: t.textOnAccent,
+        overlayColor: t.overlayColor,
+        borderColor: t.borderColor,
+        pillColor: t.pillColor,
+      };
     }
 
     function deriveThemeFromArtwork(url, fallbackHex) {
@@ -1636,12 +2005,16 @@
       if (r.arcadiaDefaultLocation) APP.arcadiaDefaultLocation = r.arcadiaDefaultLocation;
       if (r.todayIso) APP.todayIso = r.todayIso;
       if (r.me) APP.me = r.me;
+      if (r.googleMapsApiKey !== undefined) APP.googleMapsApiKey = (r.googleMapsApiKey || '').trim();
       if (r.me && r.me.displayName) document.getElementById('dispName').textContent = r.me.displayName;
       ensureViewMonth();
       renderConfirmed();
       renderDayList();
       renderGateSessions(APP.campaigns || [], APP.confirmedGames || []);
       renderManagePage();
+      if (APP.editingCampaignId && document.getElementById('campaign-edit-page') && !document.getElementById('campaign-edit-page').classList.contains('hidden')) {
+        renderCampaignEditPage();
+      }
       renderRoster();
       if (!APP.hasScrolledToToday && APP.todayIso) {
         APP.hasScrolledToToday = true;
@@ -1903,305 +2276,59 @@
 
     function renderManagePage() {
       var list = document.getElementById('campaign-admin-list');
+      var filterEl = document.getElementById('manageStatusFilter');
+      if (filterEl) filterEl.value = APP.manageStatusFilter || 'active';
       if (!list) return;
-      var campaigns = (APP.campaigns || []).slice();
+      var status = APP.manageStatusFilter || 'active';
+      var campaigns = (APP.campaigns || []).filter(function(c) { return c.status === status; });
       if (!campaigns.length) {
-        list.innerHTML = '<div class="cal-sync-note">No campaigns configured.</div>';
+        var label = status === 'active' ? 'active' : (status === 'parked' ? 'parked' : 'archived');
+        list.innerHTML = '<div class="cal-sync-note">No ' + label + ' campaigns.</div>';
       } else {
-        var groups = {
-          active: campaigns.filter(function(c){ return c.status === 'active'; }),
-          parked: campaigns.filter(function(c){ return c.status === 'parked'; }),
-          archived: campaigns.filter(function(c){ return c.status === 'archived'; }),
-        };
-        function groupHtml(title, key, openByDefault) {
-          var rows = groups[key];
-          var inner = rows.length ? rows.map(function(c) {
-            var t = themeForCampaign(c);
-            return '<details class="manage-section" open>' +
-              '<summary>' + esc(c.name || 'Campaign') + ' · ' + esc(c.status || 'active') + (c.isCurrent ? ' · current' : '') + '</summary>' +
-              '<div class="manage-section-body">' +
-                '<div class="editor-block">' +
-                  '<div class="editor-block-title">Identity</div>' +
-                  '<div class="editor-grid">' +
-                    '<input type="text" class="js-camp-name" data-id="' + esc(c.id) + '" value="' + esc(c.name || '') + '" placeholder="Campaign name"/>' +
-                    '<input type="text" class="js-camp-tagline" data-id="' + esc(c.id) + '" value="' + esc(c.tagline || '') + '" placeholder="Tagline"/>' +
-                    '<input type="text" class="js-camp-image" data-id="' + esc(c.id) + '" value="' + esc(c.cardImageUrl || '') + '" placeholder="Artwork URL"/>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="editor-block">' +
-                  '<div class="editor-block-title">Theme</div>' +
-                '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
-                  '<label style="margin:0;font-size:11px;color:var(--text-dim);text-transform:none;letter-spacing:0;">Theme</label>' +
-                  '<select class="js-camp-theme-mode" data-id="' + esc(c.id) + '" style="width:auto;min-width:130px;padding:8px 10px;">' +
-                    '<option value="auto"' + (t.themeMode === 'auto' ? ' selected' : '') + '>Auto from artwork</option>' +
-                    '<option value="manual"' + (t.themeMode === 'manual' ? ' selected' : '') + '>Manual</option>' +
-                  '</select>' +
-                  '<button type="button" class="small-btn js-camp-auto-generate" data-id="' + esc(c.id) + '">Generate theme</button>' +
-                  '<button type="button" class="small-btn js-camp-apply-auto" data-id="' + esc(c.id) + '">Apply auto suggestion</button>' +
-                '</div>' +
-                '<div class="js-camp-manual-wrap" data-id="' + esc(c.id) + '" style="display:' + (t.themeMode === 'manual' ? 'grid' : 'none') + ';gap:8px;margin-top:8px;">' +
-                  '<div class="editor-row">' +
-                    '<div class="color-pair"><input type="color" class="js-camp-accent-color-picker" data-id="' + esc(c.id) + '" value="' + esc(t.accentColor) + '"/><input type="text" class="js-camp-accent-color" data-id="' + esc(c.id) + '" value="' + esc(t.accentColor) + '" placeholder="Accent hex (#RRGGBB)"/></div>' +
-                    '<div class="color-pair"><input type="color" class="js-camp-text-on-accent-picker" data-id="' + esc(c.id) + '" value="' + esc(t.textOnAccent) + '"/><input type="text" class="js-camp-text-on-accent" data-id="' + esc(c.id) + '" value="' + esc(t.textOnAccent) + '" placeholder="Text hex (#RRGGBB)"/></div>' +
-                  '</div>' +
-                  '<input type="text" class="js-camp-accent-soft" data-id="' + esc(c.id) + '" value="' + esc(t.accentSoftColor) + '" placeholder="Soft accent (rgba)"/>' +
-                  '<input type="text" class="js-camp-overlay" data-id="' + esc(c.id) + '" value="' + esc(t.overlayColor) + '" placeholder="Overlay (rgba)"/>' +
-                  '<div class="color-pair"><input type="color" class="js-camp-border-picker" data-id="' + esc(c.id) + '" value="' + esc(t.borderColor) + '"/><input type="text" class="js-camp-border" data-id="' + esc(c.id) + '" value="' + esc(t.borderColor) + '" placeholder="Border hex (#RRGGBB)"/></div>' +
-                  '<input type="text" class="js-camp-pill" data-id="' + esc(c.id) + '" value="' + esc(t.pillColor) + '" placeholder="Pill (rgba)"/>' +
-                  '<div class="editor-help">RGBA examples: rgba(200,80,80,0.20) and rgba(0,0,0,0.64)</div>' +
-                '</div>' +
-                '</div>' +
-                '<div class="editor-block">' +
-                  '<div class="editor-block-title">Artwork + Preview</div>' +
-                  '<img class="js-camp-image-preview" data-id="' + esc(c.id) + '" src="' + esc(c.cardImageUrl || '') + '" alt="' + esc((c.name || 'Campaign') + ' artwork preview') + '" style="width:100%;max-height:140px;object-fit:cover;border:1px solid var(--border);border-radius:8px;' + (c.cardImageUrl ? '' : 'display:none;') + '"/>' +
-                  '<div class="preview-cards">' +
-                    '<div><div class="preview-title">Login card preview</div><div class="js-preview-login" data-id="' + esc(c.id) + '"></div></div>' +
-                    '<div><div class="preview-title">Confirmed card preview</div><div class="js-preview-confirmed" data-id="' + esc(c.id) + '"></div></div>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="editor-block">' +
-                  '<div class="editor-block-title">Actions</div>' +
-                '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
-                  '<button type="button" class="small-btn js-camp-save" data-id="' + esc(c.id) + '">Save</button>' +
-                  (c.status === 'active' ? '<button type="button" class="small-btn js-camp-current" data-id="' + esc(c.id) + '">Set current</button>' : '') +
-                  (c.status !== 'active' ? '<button type="button" class="small-btn js-camp-active" data-id="' + esc(c.id) + '">Activate</button>' : '') +
-                  (c.status !== 'parked' ? '<button type="button" class="small-btn js-camp-park" data-id="' + esc(c.id) + '">Park</button>' : '') +
-                  (c.status !== 'archived' ? '<button type="button" class="small-btn js-camp-archive" data-id="' + esc(c.id) + '">Archive</button>' : '') +
-                '</div>' +
-                '</div>' +
-              '</div>' +
-            '</details>';
-          }).join('') : '<div class="cal-sync-note">No campaigns in this section.</div>';
-          return '<details class="manage-section"' + (openByDefault ? ' open' : '') + '><summary>' + esc(title) + '</summary><div class="manage-section-body">' + inner + '</div></details>';
-        }
-        list.innerHTML = groupHtml('Active', 'active', true) + groupHtml('Parked', 'parked', false) + groupHtml('Archived', 'archived', false);
+        list.innerHTML = campaigns.map(function(c) {
+          var actions = '<div class="manage-campaign-actions">' +
+            (c.status === 'active' ? '<button type="button" class="small-btn js-camp-current" data-id="' + esc(c.id) + '">Set current</button>' : '') +
+            (c.status !== 'active' ? '<button type="button" class="small-btn js-camp-active" data-id="' + esc(c.id) + '">Activate</button>' : '') +
+            (c.status !== 'parked' ? '<button type="button" class="small-btn js-camp-park" data-id="' + esc(c.id) + '">Park</button>' : '') +
+            (c.status !== 'archived' ? '<button type="button" class="small-btn js-camp-archive" data-id="' + esc(c.id) + '">Archive</button>' : '') +
+          '</div>';
+          return '<div class="manage-campaign-row">' + renderManageCampaignCardHtml(c) + actions + '</div>';
+        }).join('');
       }
 
-      list.querySelectorAll('.js-camp-current').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          api('setCurrentCampaign', { id: this.getAttribute('data-id') }).then(function(r) {
-            if (!r.ok) { alert(r.error || 'Failed'); return; }
-            mergeApp(r);
-          });
+      list.querySelectorAll('.js-manage-camp-card').forEach(function(card) {
+        card.addEventListener('click', function() {
+          showCampaignEditPage(this.getAttribute('data-campaign-id') || '');
         });
       });
-      list.querySelectorAll('.js-camp-active').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          api('setCampaignStatus', { id: this.getAttribute('data-id'), status: 'active', makeCurrent: true }).then(function(r) {
-            if (!r.ok) { alert(r.error || 'Failed'); return; }
-            mergeApp(r);
-          });
-        });
-      });
-      list.querySelectorAll('.js-camp-park').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          api('setCampaignStatus', { id: this.getAttribute('data-id'), status: 'parked' }).then(function(r) {
-            if (!r.ok) { alert(r.error || 'Failed'); return; }
-            mergeApp(r);
-          });
-        });
-      });
-      list.querySelectorAll('.js-camp-archive').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          if (!confirm('Archive this campaign?')) return;
-          api('setCampaignStatus', { id: this.getAttribute('data-id'), status: 'archived' }).then(function(r) {
-            if (!r.ok) { alert(r.error || 'Failed'); return; }
-            mergeApp(r);
-          });
-        });
-      });
-      list.querySelectorAll('.js-camp-save').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+      list.querySelectorAll('.js-camp-current,.js-camp-active,.js-camp-park,.js-camp-archive').forEach(function(btn) {
+        btn.addEventListener('click', function(ev) {
+          ev.stopPropagation();
           var id = this.getAttribute('data-id');
-          var nameEl = list.querySelector('.js-camp-name[data-id="' + id + '"]');
-          var taglineEl = list.querySelector('.js-camp-tagline[data-id="' + id + '"]');
-          var imageEl = list.querySelector('.js-camp-image[data-id="' + id + '"]');
-          var modeEl = list.querySelector('.js-camp-theme-mode[data-id="' + id + '"]');
-          var manual = modeEl && modeEl.value === 'manual';
-          var name = nameEl ? nameEl.value.trim() : '';
-          if (!name) { alert('Campaign name is required.'); return; }
-          function val(sel) {
-            var el = list.querySelector(sel + '[data-id="' + id + '"]');
-            return el ? el.value.trim() : '';
+          if (this.classList.contains('js-camp-current')) {
+            api('setCurrentCampaign', { id: id }).then(function(r) {
+              if (!r.ok) { alert(r.error || 'Failed'); return; }
+              mergeApp(r);
+            });
+          } else if (this.classList.contains('js-camp-active')) {
+            api('setCampaignStatus', { id: id, status: 'active', makeCurrent: true }).then(function(r) {
+              if (!r.ok) { alert(r.error || 'Failed'); return; }
+              mergeApp(r);
+            });
+          } else if (this.classList.contains('js-camp-park')) {
+            api('setCampaignStatus', { id: id, status: 'parked' }).then(function(r) {
+              if (!r.ok) { alert(r.error || 'Failed'); return; }
+              mergeApp(r);
+            });
+          } else if (this.classList.contains('js-camp-archive')) {
+            if (!confirm('Archive this campaign?')) return;
+            api('setCampaignStatus', { id: id, status: 'archived' }).then(function(r) {
+              if (!r.ok) { alert(r.error || 'Failed'); return; }
+              mergeApp(r);
+            });
           }
-          api('updateCampaign', {
-            id: id,
-            name: name,
-            tagline: taglineEl ? taglineEl.value.trim() : '',
-            cardImageUrl: imageEl ? imageEl.value.trim() : '',
-            themeMode: manual ? 'manual' : 'auto',
-            accentColor: val('.js-camp-accent-color'),
-            accentSoftColor: val('.js-camp-accent-soft'),
-            textOnAccent: val('.js-camp-text-on-accent'),
-            overlayColor: val('.js-camp-overlay'),
-            borderColor: val('.js-camp-border'),
-            pillColor: val('.js-camp-pill'),
-          }).then(function(r) {
-            if (!r.ok) { alert(r.error || 'Failed'); return; }
-            mergeApp(r);
-          });
         });
       });
-      function currentThemeFromInputs(id) {
-        function val(sel) {
-          var el = list.querySelector(sel + '[data-id="' + id + '"]');
-          return el ? el.value.trim() : '';
-        }
-        return {
-          accentColor: val('.js-camp-accent-color') || '#7ab880',
-          accentSoftColor: val('.js-camp-accent-soft') || 'rgba(122,184,128,0.18)',
-          textOnAccent: val('.js-camp-text-on-accent') || '#e8f8e8',
-          overlayColor: val('.js-camp-overlay') || 'rgba(0,0,0,0.62)',
-          borderColor: val('.js-camp-border') || '#2e5030',
-          pillColor: val('.js-camp-pill') || 'rgba(255,255,255,0.12)',
-          themeMode: (list.querySelector('.js-camp-theme-mode[data-id="' + id + '"]') || {}).value || 'auto',
-        };
-      }
-      function renderEditorCardPreview(id) {
-        var nameEl = list.querySelector('.js-camp-name[data-id="' + id + '"]');
-        var imageEl = list.querySelector('.js-camp-image[data-id="' + id + '"]');
-        var status = ((APP.campaigns || []).find(function(c){ return c.id === id; }) || {}).status || 'active';
-        var isCurrent = !!(((APP.campaigns || []).find(function(c){ return c.id === id; }) || {}).isCurrent);
-        var t = currentThemeFromInputs(id);
-        var v = campaignVisualStyle(t);
-        var statusText = isCurrent ? 'Current campaign' : (status === 'parked' ? 'Parked' : 'Also playing');
-        var title = nameEl ? nameEl.value.trim() || 'Campaign' : 'Campaign';
-        var img = imageEl ? imageEl.value.trim() : '';
-        var loginWrap = list.querySelector('.js-preview-login[data-id="' + id + '"]');
-        var confirmedWrap = list.querySelector('.js-preview-confirmed[data-id="' + id + '"]');
-        if (loginWrap) {
-          loginWrap.innerHTML =
-            '<div class="preview-login-card" style="border-color:' + esc(t.borderColor) + ';">' +
-              '<div class="preview-bg" style="background-image:url(\'' + esc(img) + '\');"></div>' +
-              '<div class="preview-filter" style="background:' + esc(v.filterColor) + ';"></div>' +
-              '<div class="preview-scrim" style="background:' + esc(v.scrim) + ';"></div>' +
-              '<div class="preview-content">' +
-                '<span class="preview-status" style="color:' + esc(v.statusColor) + ';background:' + esc(v.statusBg) + ';border-color:' + esc(v.statusBorder) + ';text-shadow:' + esc(v.textShadow) + ';">' + esc(statusText) + '</span>' +
-                '<div class="preview-campaign-name" style="color:' + esc(v.textColor) + ';text-shadow:' + esc(v.textShadow) + ';">' + esc(title) + '</div>' +
-              '</div>' +
-            '</div>';
-        }
-        if (confirmedWrap) {
-          confirmedWrap.innerHTML =
-            '<div class="preview-confirmed-card" style="border-color:' + esc(t.borderColor) + ';">' +
-              '<div class="preview-bg" style="background-image:url(\'' + esc(img) + '\');"></div>' +
-              '<div class="preview-scrim" style="background:' + esc(v.confirmedScrim) + ';"></div>' +
-              '<div class="preview-content">' +
-                '<div class="preview-confirmed-label" style="color:' + esc(v.tagColor) + ';text-shadow:' + esc(v.textShadow) + ';">' + esc(title) + '</div>' +
-                '<div class="preview-confirmed-date" style="color:' + esc(v.textColor) + ';text-shadow:' + esc(v.textShadow) + ';">Sunday 18 May</div>' +
-                '<div class="preview-confirmed-time" style="text-shadow:' + esc(v.textShadow) + ';">18:30 – 22:00</div>' +
-                '<div class="preview-chip-row"><span class="preview-chip" style="background:' + esc(t.pillColor) + ';border-color:' + esc(t.borderColor) + ';color:' + esc(v.textColor) + ';">Chris</span><span class="preview-chip" style="background:' + esc(t.pillColor) + ';border-color:' + esc(t.borderColor) + ';color:' + esc(v.textColor) + ';">Emil</span></div>' +
-              '</div>' +
-            '</div>';
-        }
-      }
-      list.querySelectorAll('.js-camp-name,.js-camp-image,.js-camp-tagline,.js-camp-accent-color,.js-camp-text-on-accent,.js-camp-accent-soft,.js-camp-overlay,.js-camp-border,.js-camp-pill').forEach(function(input) {
-        input.addEventListener('input', function() {
-          var id = this.getAttribute('data-id');
-          if (id) renderEditorCardPreview(id);
-        });
-      });
-      list.querySelectorAll('.js-camp-accent-color-picker,.js-camp-text-on-accent-picker,.js-camp-border-picker').forEach(function(picker) {
-        picker.addEventListener('input', function() {
-          var id = this.getAttribute('data-id');
-          var targetClass = this.classList.contains('js-camp-accent-color-picker') ? '.js-camp-accent-color'
-            : this.classList.contains('js-camp-text-on-accent-picker') ? '.js-camp-text-on-accent'
-            : '.js-camp-border';
-          var text = list.querySelector(targetClass + '[data-id="' + id + '"]');
-          if (text) text.value = this.value;
-          if (id) renderEditorCardPreview(id);
-        });
-      });
-      list.querySelectorAll('.js-camp-accent-color,.js-camp-text-on-accent,.js-camp-border').forEach(function(textInput) {
-        textInput.addEventListener('input', function() {
-          var id = this.getAttribute('data-id');
-          var v = this.value.trim();
-          if (!/^#[0-9a-fA-F]{6}$/.test(v)) return;
-          var cls = this.classList.contains('js-camp-accent-color') ? '.js-camp-accent-color-picker'
-            : this.classList.contains('js-camp-text-on-accent') ? '.js-camp-text-on-accent-picker'
-            : '.js-camp-border-picker';
-          var picker = list.querySelector(cls + '[data-id="' + id + '"]');
-          if (picker) picker.value = v;
-        });
-      });
-      list.querySelectorAll('.js-camp-image').forEach(function(input) {
-        input.addEventListener('input', function() {
-          var id = this.getAttribute('data-id');
-          var preview = list.querySelector('.js-camp-image-preview[data-id="' + id + '"]');
-          if (!preview) return;
-          var url = this.value.trim();
-          if (!url) {
-            preview.style.display = 'none';
-            preview.removeAttribute('src');
-            return;
-          }
-          preview.src = url;
-          preview.style.display = '';
-        });
-      });
-      list.querySelectorAll('.js-camp-theme-mode').forEach(function(sel) {
-        sel.addEventListener('change', function() {
-          var id = this.getAttribute('data-id');
-          var wrap = list.querySelector('.js-camp-manual-wrap[data-id="' + id + '"]');
-          if (!wrap) return;
-          wrap.style.display = this.value === 'manual' ? 'grid' : 'none';
-          renderEditorCardPreview(id);
-        });
-      });
-      list.querySelectorAll('.js-camp-auto-generate').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var id = this.getAttribute('data-id');
-          var imgEl = list.querySelector('.js-camp-image[data-id="' + id + '"]');
-          var url = imgEl ? imgEl.value.trim() : '';
-          if (!url) { alert('Add artwork URL first.'); return; }
-          deriveThemeFromArtwork(url).then(function(t) {
-            function setVal(sel, val) {
-              var el = list.querySelector(sel + '[data-id="' + id + '"]');
-              if (el) el.value = val;
-            }
-            setVal('.js-camp-accent-color', t.accentColor);
-            setVal('.js-camp-accent-soft', t.accentSoftColor);
-            setVal('.js-camp-text-on-accent', t.textOnAccent);
-            setVal('.js-camp-overlay', t.overlayColor);
-            setVal('.js-camp-border', t.borderColor);
-            setVal('.js-camp-pill', t.pillColor);
-            var mode = list.querySelector('.js-camp-theme-mode[data-id="' + id + '"]');
-            if (mode) mode.value = 'auto';
-            var chip = list.querySelector('.js-theme-preview-chip[data-id="' + id + '"]');
-            if (chip) {
-              chip.style.background = t.accentSoftColor;
-              chip.style.borderColor = t.borderColor;
-              chip.style.color = t.accentColor;
-            }
-            renderEditorCardPreview(id);
-          });
-        });
-      });
-      list.querySelectorAll('.js-camp-apply-auto').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var id = this.getAttribute('data-id');
-          var imgEl = list.querySelector('.js-camp-image[data-id="' + id + '"]');
-          var url = imgEl ? imgEl.value.trim() : '';
-          if (!url) { alert('Add artwork URL first.'); return; }
-          deriveThemeFromArtwork(url).then(function(t) {
-            function setVal(sel, val) {
-              var el = list.querySelector(sel + '[data-id="' + id + '"]');
-              if (el) el.value = val;
-            }
-            setVal('.js-camp-accent-color', t.accentColor);
-            setVal('.js-camp-accent-soft', t.accentSoftColor);
-            setVal('.js-camp-text-on-accent', t.textOnAccent);
-            setVal('.js-camp-overlay', t.overlayColor);
-            setVal('.js-camp-border', t.borderColor);
-            setVal('.js-camp-pill', t.pillColor);
-            var p1 = list.querySelector('.js-camp-accent-color-picker[data-id="' + id + '"]'); if (p1) p1.value = t.accentColor;
-            var p2 = list.querySelector('.js-camp-text-on-accent-picker[data-id="' + id + '"]'); if (p2) p2.value = t.textOnAccent;
-            var p3 = list.querySelector('.js-camp-border-picker[data-id="' + id + '"]'); if (p3) p3.value = t.borderColor;
-            renderEditorCardPreview(id);
-          });
-        });
-      });
-      (APP.campaigns || []).forEach(function(c) { renderEditorCardPreview(c.id); });
 
       var pList = document.getElementById('player-admin-list');
       if (!pList) return;
@@ -2260,77 +2387,108 @@
 
     document.getElementById('btnCampaignAdd').addEventListener('click', function() {
       var nameEl = document.getElementById('newCampaignName');
-      var taglineEl = document.getElementById('newCampaignTagline');
-      var imageEl = document.getElementById('newCampaignImage');
-      var modeEl = document.getElementById('newCampaignThemeMode');
-      function get(id) {
-        var el = document.getElementById(id);
-        return el ? el.value.trim() : '';
-      }
       var name = nameEl ? nameEl.value.trim() : '';
       if (!name) { alert('Campaign name is required.'); return; }
-      api('createCampaign', {
-        name: name,
-        tagline: taglineEl ? taglineEl.value.trim() : '',
-        cardImageUrl: imageEl ? imageEl.value.trim() : '',
-        themeMode: modeEl ? modeEl.value : 'auto',
-        accentColor: get('newCampaignAccentColor'),
-        accentSoftColor: get('newCampaignAccentSoft'),
-        textOnAccent: get('newCampaignTextOnAccent'),
-        overlayColor: get('newCampaignOverlayColor'),
-        borderColor: get('newCampaignBorderColor'),
-        pillColor: get('newCampaignPillColor'),
-        status: 'active'
-      }).then(function(r) {
+      var prevIds = {};
+      (APP.campaigns || []).forEach(function(c) { prevIds[c.id] = true; });
+      api('createCampaign', { name: name, status: 'active' }).then(function(r) {
         if (!r.ok) { alert(r.error || 'Failed'); return; }
         if (nameEl) nameEl.value = '';
-        if (taglineEl) taglineEl.value = '';
-        if (imageEl) imageEl.value = '';
-        ['newCampaignAccentColor','newCampaignAccentSoft','newCampaignTextOnAccent','newCampaignOverlayColor','newCampaignBorderColor','newCampaignPillColor'].forEach(function(id){ var el=document.getElementById(id); if (el) el.value='';});
-        var newPreview = document.getElementById('newCampaignImagePreview');
-        if (newPreview) {
-          newPreview.style.display = 'none';
-          newPreview.removeAttribute('src');
-        }
         var formWrap = document.getElementById('newCampaignFormWrap');
         if (formWrap) formWrap.classList.add('hidden');
         mergeApp(r);
+        var created = (APP.campaigns || []).find(function(c) { return !prevIds[c.id]; });
+        if (created) showCampaignEditPage(created.id);
       });
     });
     document.getElementById('btnToggleNewCampaignForm').addEventListener('click', function() {
       var formWrap = document.getElementById('newCampaignFormWrap');
       if (!formWrap) return;
       formWrap.classList.toggle('hidden');
+      if (!formWrap.classList.contains('hidden')) {
+        var nameEl = document.getElementById('newCampaignName');
+        if (nameEl) nameEl.focus();
+      }
     });
-    document.getElementById('newCampaignThemeMode').addEventListener('change', function() {
-      var manual = this.value === 'manual';
-      ['newCampaignAccentColor','newCampaignTextOnAccent','newCampaignAccentSoft','newCampaignOverlayColor','newCampaignBorderColor','newCampaignPillColor'].forEach(function(id){
-        var el = document.getElementById(id);
-        if (!el) return;
-        el.disabled = !manual;
+    document.getElementById('manageStatusFilter').addEventListener('change', function() {
+      APP.manageStatusFilter = this.value || 'active';
+      renderManagePage();
+    });
+    document.getElementById('btnBackToManageFromEdit').addEventListener('click', function() {
+      showManagePage();
+    });
+    document.getElementById('btnCampEditSave').addEventListener('click', function() {
+      var payload = collectCampaignEditPayload();
+      if (!payload.name) { alert('Campaign name is required.'); return; }
+      api('updateCampaign', payload).then(function(r) {
+        if (!r.ok) { alert(r.error || 'Failed'); return; }
+        mergeApp(r);
+        showManagePage();
       });
     });
-    document.getElementById('newCampaignImage').addEventListener('input', function() {
-      var preview = document.getElementById('newCampaignImagePreview');
-      if (!preview) return;
+    document.getElementById('campEditThemeMode').addEventListener('change', function() {
+      var wrap = document.getElementById('campEditManualColors');
+      if (wrap) wrap.classList.toggle('hidden', this.value !== 'manual');
+      renderCampaignEditPreviews();
+    });
+    document.getElementById('campEditName').addEventListener('input', function() {
+      var titleEl = document.getElementById('campEditTitle');
+      if (titleEl) titleEl.textContent = this.value.trim() || 'Edit campaign';
+      renderCampaignEditPreviews();
+    });
+    document.getElementById('campEditTagline').addEventListener('input', function() {
+      var subEl = document.getElementById('campEditSub');
+      if (subEl) subEl.textContent = this.value.trim() || 'Campaign settings';
+      renderCampaignEditPreviews();
+    });
+    document.getElementById('campEditImage').addEventListener('input', function() {
+      var preview = document.getElementById('campEditImagePreview');
       var url = this.value.trim();
+      if (!preview) return;
       if (!url) {
         preview.style.display = 'none';
         preview.removeAttribute('src');
-        return;
+      } else {
+        preview.src = url;
+        preview.style.display = '';
       }
-      preview.src = url;
-      preview.style.display = '';
+      renderCampaignEditPreviews();
+    });
+    function applyDerivedThemeToEdit(t, setModeAuto) {
+      applyThemeToEditChits(t);
+      if (setModeAuto) {
+        var modeEl = document.getElementById('campEditThemeMode');
+        if (modeEl) modeEl.value = 'auto';
+        var wrap = document.getElementById('campEditManualColors');
+        if (wrap) wrap.classList.add('hidden');
+      }
+      renderCampaignEditPreviews();
+    }
+    document.getElementById('btnCampEditGenerateTheme').addEventListener('click', function() {
+      var url = (document.getElementById('campEditImage') || {}).value || '';
+      url = url.trim();
+      if (!url) { alert('Add artwork URL first.'); return; }
+      deriveThemeFromArtwork(url).then(function(t) { applyDerivedThemeToEdit(t, true); });
+    });
+    document.getElementById('btnCampEditApplyAuto').addEventListener('click', function() {
+      var url = (document.getElementById('campEditImage') || {}).value || '';
+      url = url.trim();
+      if (!url) { alert('Add artwork URL first.'); return; }
       deriveThemeFromArtwork(url).then(function(t) {
-        var set = function(id, val) { var el = document.getElementById(id); if (el) el.value = val; };
-        set('newCampaignAccentColor', t.accentColor);
-        set('newCampaignAccentSoft', t.accentSoftColor);
-        set('newCampaignTextOnAccent', t.textOnAccent);
-        set('newCampaignOverlayColor', t.overlayColor);
-        set('newCampaignBorderColor', t.borderColor);
-        set('newCampaignPillColor', t.pillColor);
+        applyThemeToEditChits(t);
+        var modeEl = document.getElementById('campEditThemeMode');
+        if (modeEl) modeEl.value = 'manual';
+        var wrap = document.getElementById('campEditManualColors');
+        if (wrap) wrap.classList.remove('hidden');
+        renderCampaignEditPreviews();
       });
     });
+    wireColorChit(document.getElementById('campEditAccentChit'), document.getElementById('campEditAccentPicker'), null, renderCampaignEditPreviews);
+    wireColorChit(document.getElementById('campEditTextChit'), document.getElementById('campEditTextPicker'), null, renderCampaignEditPreviews);
+    wireColorChit(document.getElementById('campEditSoftChit'), document.getElementById('campEditSoftPicker'), document.getElementById('campEditSoftAlpha'), renderCampaignEditPreviews);
+    wireColorChit(document.getElementById('campEditOverlayChit'), document.getElementById('campEditOverlayPicker'), document.getElementById('campEditOverlayAlpha'), renderCampaignEditPreviews);
+    wireColorChit(document.getElementById('campEditBorderChit'), document.getElementById('campEditBorderPicker'), null, renderCampaignEditPreviews);
+    wireColorChit(document.getElementById('campEditPillChit'), document.getElementById('campEditPillPicker'), document.getElementById('campEditPillAlpha'), renderCampaignEditPreviews);
     document.getElementById('btnPlayerAdd').addEventListener('click', function() {
       var input = document.getElementById('newPlayerName');
       var displayName = input ? input.value.trim() : '';
@@ -2527,6 +2685,7 @@
       };
       document.getElementById('sheet-confirm').classList.add('open');
       document.getElementById('sheet-confirm').setAttribute('aria-hidden', 'false');
+      initPlacesAutocomplete(document.getElementById('cfLoc'), 'cfLocHint');
     }
 
     function openBookingEditor(iso) {
@@ -2561,6 +2720,7 @@
       document.getElementById('sheet-detail').classList.remove('open');
       document.getElementById('sheet-confirm').classList.add('open');
       document.getElementById('sheet-confirm').setAttribute('aria-hidden', 'false');
+      initPlacesAutocomplete(document.getElementById('cfLoc'), 'cfLocHint');
     }
 
     var GH_LOC_DEFAULT = 'Online / home';

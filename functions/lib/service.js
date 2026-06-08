@@ -303,7 +303,8 @@ export async function getPublicBootstrap(repo, env) {
   const nameById = Object.fromEntries(players.map(p => [p.id, p.displayName]));
   const campaignById = Object.fromEntries(campaigns.map(c => [c.id, c]));
   const confirmedGames = toConfirmedGames(bookings, nameById, campaignById);
-  return { ok: true, players, campaigns, requiresGroupSecret, confirmedGames };
+  const googleMapsApiKey = String(env?.GOOGLE_MAPS_API_KEY || '').trim();
+  return { ok: true, players, campaigns, requiresGroupSecret, confirmedGames, googleMapsApiKey };
 }
 
 export async function login(payload, env, repo) {

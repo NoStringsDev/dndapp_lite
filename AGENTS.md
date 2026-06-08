@@ -37,4 +37,5 @@ Alternatively, delete `.wrangler/state/` entirely and the dev server will start 
 ### Environment variables
 
 - `GROUP_SECRET` (optional): set in `.dev.vars` to enable the password gate. Omit for name-only login.
-- Copy `.dev.vars.example` to `.dev.vars` if you want to test the password gate.
+- `GOOGLE_MAPS_API_KEY` (optional): enables address autocomplete on the campaign edit screen. Requires Maps JavaScript API + Places API in Google Cloud, and `http://localhost:8788/*` in the key’s HTTP referrer allowlist for local dev.
+- Copy `.dev.vars.example` to `.dev.vars` if you want to test the password gate or address search locally.

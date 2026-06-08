@@ -1,3 +1,7 @@
 # Copy to .dev.vars for local `wrangler pages dev` (do not commit .dev.vars)
 # Optional: omit GROUP_SECRET for name-only login; set it to require a shared password.
 # GROUP_SECRET=change-me-to-a-long-random-string
+
+# Optional: Google Maps API key with Places API enabled — powers address search on campaign edit.
+# Restrict the key to your domain in Google Cloud Console.
+# GOOGLE_MAPS_API_KEY=your-api-key-here

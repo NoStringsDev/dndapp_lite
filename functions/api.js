@@ -120,7 +120,11 @@ async function route(action, payload, actor, env, repo, request) {
       return svc.authMe(actor?.sessionId || null, repo);
 
     case 'getAppData':
-      return requireAuth(actor, () => svc.getAppData({ playerId: actor.playerId }, repo));
+      return requireAuth(actor, async () => {
+        const data = await svc.getAppData({ playerId: actor.playerId }, repo);
+        if (!data.ok) return data;
+        return { ...data, googleMapsApiKey: String(env?.GOOGLE_MAPS_API_KEY || '').trim() };
+      });
 
     case 'saveVotes':
       return requireAuth(actor, () =>
