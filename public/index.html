@@ -1009,7 +1009,8 @@
       if (needSecret) sw.classList.remove('hidden');
       else sw.classList.add('hidden');
       APP.campaigns = (b.campaigns || []).slice();
-      renderGateSessions(APP.campaigns, b.confirmedGames || []);
+      APP.confirmedGames = (b.confirmedGames || []).slice();
+      renderGateSessions(APP.campaigns, APP.confirmedGames);
     }
 
     function refreshGateFromServer() {
@@ -2426,8 +2427,16 @@
         '</div>';
       });
       wrap.innerHTML = html;
+      wrap.querySelectorAll('.js-gate-session').forEach(function(btn) {
+        btn.addEventListener('click', function(ev) {
+          ev.stopPropagation();
+          var iso = this.getAttribute('data-iso') || '';
+          if (iso) openDetail(iso);
+        });
+      });
       wrap.querySelectorAll('.campaign-card').forEach(function(card) {
-        card.addEventListener('click', function() {
+        card.addEventListener('click', function(ev) {
+          if (ev.target && ev.target.closest && ev.target.closest('.js-gate-session')) return;
           APP.selectedCampaignId = this.getAttribute('data-campaign-id') || '';
           renderCampaignDetailPage();
           showCampaignDetail();
