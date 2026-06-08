@@ -365,6 +365,13 @@ export class D1Repo {
     await this._db.prepare('DELETE FROM bookings WHERE date = ?').bind(date).run();
   }
 
+  async syncBookingKindForCampaign(campaignId, slug) {
+    await this._db
+      .prepare('UPDATE bookings SET kind = ? WHERE campaign_id = ?')
+      .bind(slug, campaignId)
+      .run();
+  }
+
   async createSession(sessionId, playerId, expiresAtIso) {
     await this._db
       .prepare('INSERT INTO sessions (id, player_id, expires_at) VALUES (?, ?, ?)')

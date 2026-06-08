@@ -1986,7 +1986,7 @@
       });
       list.querySelectorAll('.js-camp-active').forEach(function(btn) {
         btn.addEventListener('click', function() {
-          api('setCampaignStatus', { id: this.getAttribute('data-id'), status: 'active' }).then(function(r) {
+          api('setCampaignStatus', { id: this.getAttribute('data-id'), status: 'active', makeCurrent: true }).then(function(r) {
             if (!r.ok) { alert(r.error || 'Failed'); return; }
             mergeApp(r);
           });
@@ -2473,11 +2473,20 @@
       document.getElementById('cfSave').textContent = 'Confirm';
     }
 
-    function renderCampaignOptions(selectedId) {
+    function renderCampaignOptions(selectedId, opts) {
+      opts = opts || {};
       var sel = document.getElementById('cfKind');
       var options = getBookableCampaigns();
+      if (opts.includeId && !options.some(function(c) { return c.id === opts.includeId; })) {
+        var extra = campaignById(opts.includeId);
+        if (extra) options = options.concat([extra]);
+      }
       var html = options.map(function(c) {
-        return '<option value="' + esc(c.id) + '">' + esc(c.name) + (c.isCurrent ? ' (Current)' : '') + '</option>';
+        var inactive = c.status !== 'active';
+        var statusLabel = inactive ? (c.status === 'archived' ? 'Archived' : 'Parked') : '';
+        var suffix = statusLabel ? (' (' + statusLabel + ')') : (c.isCurrent ? ' (Current)' : '');
+        var disabled = inactive ? ' disabled' : '';
+        return '<option value="' + esc(c.id) + '"' + disabled + '>' + esc(c.name) + suffix + '</option>';
       }).join('');
       sel.innerHTML = html;
       if (selectedId && options.some(function(c) { return c.id === selectedId; })) sel.value = selectedId;
@@ -2530,7 +2539,7 @@
         });
       }
       document.getElementById('confirmVoteSummary').innerHTML = vs;
-      renderCampaignOptions(c.campaignId);
+      renderCampaignOptions(c.campaignId, { includeId: c.campaignId });
       document.getElementById('cfStart').value = c.startTime || '18:30';
       document.getElementById('cfEnd').value = c.endTime || '22:00';
       document.getElementById('cfLoc').value = c.location || '';
@@ -2594,6 +2603,22 @@
       });
       var err = document.getElementById('cfErr');
       err.style.display = 'none';
+      if (!campaign) {
+        err.textContent = 'Pick a campaign.';
+        err.style.display = 'block';
+        return;
+      }
+      var existing = findConfirmed(iso);
+      if (campaign.status === 'archived') {
+        err.textContent = 'Archived campaigns cannot be booked. Reactivate the campaign first.';
+        err.style.display = 'block';
+        return;
+      }
+      if (campaign.status !== 'active' && !(APP.editBooking && existing && existing.campaignId === campaign.id)) {
+        err.textContent = 'Only active campaigns can be booked for new sessions.';
+        err.style.display = 'block';
+        return;
+      }
       var warns = collectBookingWarnings(campaignId, iso, ids);
       if (warns.length) {
         var msg = 'Some players have not voted Yes, or voted Maybe/No, or have no vote:\n\n' + warns.join('\n') +
@@ -2628,7 +2653,13 @@
       var c = findConfirmed(iso);
       if (!c) return;
       document.getElementById('detTitle').textContent = c.kindLabel + ' — ' + c.label;
-      var body = (c.sessionTime || '') + '<br/>' + esc(c.location || '(no location)') + '<br/><br/>Players: ';
+      var body = (c.sessionTime || '') + '<br/>' + esc(c.location || '(no location)');
+      if (c.campaign && c.campaign.status === 'archived') {
+        body += '<br/><em style="opacity:0.85;font-size:0.9rem;">Archived campaign — reactivate to edit or book new sessions.</em>';
+      } else if (c.campaign && c.campaign.status === 'parked') {
+        body += '<br/><em style="opacity:0.85;font-size:0.9rem;">Parked campaign — new sessions cannot be booked until reactivated.</em>';
+      }
+      body += '<br/><br/>Players: ';
       body += (c.attendees || []).map(function(a){ return esc(a.displayName); }).join(', ');
       document.getElementById('detBody').innerHTML = body;
       document.getElementById('sheet-detail').classList.add('open');
