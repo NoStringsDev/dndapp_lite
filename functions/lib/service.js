@@ -560,6 +560,9 @@ export async function confirmSession(payload, repo) {
       || campaigns.find(c => c.slug === kind)
       || null;
     if (!selected) return { ok: false, error: 'Unknown campaign.' };
+
+    const existing = await repo.getBooking(date);
+    const replaceExisting = Boolean(payload?.replaceExisting);
     const canEditParkedExisting = existing && replaceExisting
       && existing.campaignId === selected.id
       && selected.status === 'parked';
@@ -573,8 +576,6 @@ export async function confirmSession(payload, repo) {
     const endTime = normaliseTime(payload?.endTime, selected.defaultEndTime || '22:00');
     const location = String(payload?.location ?? '').trim() || String(selected.defaultLocation || '').trim();
 
-    const existing = await repo.getBooking(date);
-    const replaceExisting = Boolean(payload?.replaceExisting);
     if (existing && !replaceExisting) {
       return { ok: false, error: 'That date already has a confirmed session.' };
     }
