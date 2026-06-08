@@ -183,6 +183,14 @@ function normaliseThemeMode(value) {
   return value === 'manual' ? 'manual' : 'auto';
 }
 
+function campaignBySlugFromIdMap(campaignById) {
+  const bySlug = {};
+  for (const c of Object.values(campaignById || {})) {
+    if (c?.slug) bySlug[c.slug] = c;
+  }
+  return bySlug;
+}
+
 function fallbackCampaignForBooking(booking) {
   if (booking?.kind === 'arcadia') {
     return {
@@ -220,6 +228,14 @@ function fallbackCampaignForBooking(booking) {
   };
 }
 
+function resolveCampaignForBooking(booking, campaignById, campaignBySlug) {
+  const id = String(booking?.campaignId || '').trim();
+  if (id && campaignById?.[id]) return campaignById[id];
+  const slug = String(booking?.kind || '').trim();
+  if (slug && campaignBySlug?.[slug]) return campaignBySlug[slug];
+  return fallbackCampaignForBooking(booking);
+}
+
 function normaliseTime(value, fallback) {
   const t = String(value || '').trim();
   return /^\d{2}:\d{2}$/.test(t) ? t : fallback;
@@ -253,8 +269,9 @@ function normaliseDisplayName(value) {
 const MAX_PLAYERS = 50;
 
 function toConfirmedGames(bookings, nameById, campaignById) {
+  const campaignBySlug = campaignBySlugFromIdMap(campaignById);
   return (bookings || []).map(b => {
-    const campaign = campaignById[b.campaignId] || fallbackCampaignForBooking(b);
+    const campaign = resolveCampaignForBooking(b, campaignById, campaignBySlug);
     const kind = campaignKindCompat(campaign);
     const startTime = normaliseTime(b.startTime, '18:30');
     const endTime = normaliseTime(b.endTime, '22:00');
@@ -262,7 +279,7 @@ function toConfirmedGames(bookings, nameById, campaignById) {
       date: b.date,
       label: formatDateLabel(b.date),
       dayLabel: formatDayLabel(b.date),
-      campaignId: b.campaignId || '',
+      campaignId: b.campaignId || campaign?.id || '',
       campaignName: campaignLabel(campaign),
       kind,
       kindLabel: campaignLabel(campaign),
@@ -543,7 +560,15 @@ export async function confirmSession(payload, repo) {
       || campaigns.find(c => c.slug === kind)
       || null;
     if (!selected) return { ok: false, error: 'Unknown campaign.' };
-    if (selected.status !== 'active') return { ok: false, error: 'Only active campaigns can be booked.' };
+    const canEditParkedExisting = existing && replaceExisting
+      && existing.campaignId === selected.id
+      && selected.status === 'parked';
+    if (selected.status !== 'active' && !canEditParkedExisting) {
+      if (selected.status === 'archived') {
+        return { ok: false, error: 'Archived campaigns cannot be booked. Reactivate the campaign first.' };
+      }
+      return { ok: false, error: 'Only active campaigns can be booked.' };
+    }
     const startTime = normaliseTime(payload?.startTime, selected.defaultStartTime || '18:30');
     const endTime = normaliseTime(payload?.endTime, selected.defaultEndTime || '22:00');
     const location = String(payload?.location ?? '').trim() || String(selected.defaultLocation || '').trim();
@@ -677,6 +702,9 @@ export async function updateCampaign(payload, repo) {
       updatedAt: new Date().toISOString(),
     };
     await repo.updateCampaign(row);
+    if (row.slug !== existing.slug) {
+      await repo.syncBookingKindForCampaign(id, row.slug);
+    }
     if (payload?.isCurrent && row.status === 'active') await repo.setCurrentCampaign(id);
     if (row.status !== 'active' && existing.isCurrent) {
       const next = (await repo.listBookableCampaigns())[0];
@@ -712,7 +740,11 @@ export async function setCampaignStatus(payload, repo) {
     if (!existing) return { ok: false, error: 'Campaign not found.' };
     await repo.setCampaignStatus(id, status, new Date().toISOString());
     if (status !== 'active' && existing.isCurrent) await ensureCurrentCampaign(repo);
-    if (status === 'active' && (payload?.makeCurrent || false)) await repo.setCurrentCampaign(id);
+    if (status === 'active') {
+      const campaigns = await repo.listCampaigns();
+      const hasCurrentActive = campaigns.some(c => c.status === 'active' && c.isCurrent);
+      if (payload?.makeCurrent || !hasCurrentActive) await repo.setCurrentCampaign(id);
+    }
     await ensureCurrentCampaign(repo);
     return { ok: true, ...(await buildAppPayload(repo, payload.playerId)) };
   } catch (err) {
@@ -834,14 +866,16 @@ export async function rotateCalendarFeedToken(payload, repo) {
 async function buildPlayerFeedEvents(repo, playerId) {
   const today = isoDateInTimeZone(new Date(), TZ);
   const bookings = await repo.listBookingsFrom(today);
-  const campaignById = Object.fromEntries((await repo.listCampaigns()).map(c => [c.id, c]));
+  const campaigns = await repo.listCampaigns();
+  const campaignById = Object.fromEntries(campaigns.map(c => [c.id, c]));
+  const campaignBySlug = campaignBySlugFromIdMap(campaignById);
   const bookingDates = bookings.map(b => b.date);
   const myVotes = await repo.getVotesForPlayerOnDates(playerId, bookingDates);
   return bookings
     .filter(b => (myVotes[b.date] || '') === 'available' || (b.attendeePlayerIds || []).includes(playerId))
     .map(b => {
     const when = parseSessionTimes(b.date, b.startTime, b.endTime);
-    const campaign = campaignById[b.campaignId] || fallbackCampaignForBooking(b);
+    const campaign = resolveCampaignForBooking(b, campaignById, campaignBySlug);
     const summary = campaignLabel(campaign);
     const desc = [campaignLabel(campaign), b.location ? `Where: ${b.location}` : '']
       .filter(Boolean)
@@ -876,7 +910,10 @@ export async function getSingleEventCalendarIcs(payload, repo) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: 'Invalid date.' };
     const b = await repo.getBooking(date);
     if (!b) return { ok: false, error: 'No booking on that date.' };
-    const campaign = (b.campaignId && await repo.getCampaignById(b.campaignId)) || fallbackCampaignForBooking(b);
+    const campaigns = await repo.listCampaigns();
+    const campaignById = Object.fromEntries(campaigns.map(c => [c.id, c]));
+    const campaignBySlug = campaignBySlugFromIdMap(campaignById);
+    const campaign = resolveCampaignForBooking(b, campaignById, campaignBySlug);
     const when = parseSessionTimes(b.date, b.startTime, b.endTime);
     const summary = campaignLabel(campaign);
     const events = [{

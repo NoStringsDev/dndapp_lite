@@ -97,19 +97,94 @@ async function applyThemeDefaults(db) {
   );
 }
 
+const LEGACY_BOOKINGS_KIND_CHECK = "CHECK (kind IN ('green_hunger', 'arcadia'))";
+
+async function bookingsHasLegacyKindCheck(db) {
+  if (!(await tableExists(db, 'bookings'))) return false;
+  const row = await db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'bookings'")
+    .first();
+  const ddl = String(row?.sql || '');
+  return ddl.includes(LEGACY_BOOKINGS_KIND_CHECK);
+}
+
+async function relaxBookingsKindCheck(db) {
+  if (!(await tableExists(db, 'bookings'))) return false;
+  if (!(await bookingsHasLegacyKindCheck(db))) return false;
+
+  await exec(db, 'PRAGMA foreign_keys = OFF');
+  await exec(
+    db,
+    `CREATE TABLE bookings_new (
+      date                 TEXT PRIMARY KEY,
+      kind                 TEXT NOT NULL,
+      campaign_id          TEXT,
+      start_time           TEXT NOT NULL,
+      end_time             TEXT NOT NULL,
+      location             TEXT NOT NULL DEFAULT '',
+      attendee_player_ids  TEXT NOT NULL DEFAULT '',
+      created_at           TEXT NOT NULL,
+      created_by_player_id TEXT,
+      FOREIGN KEY (created_by_player_id) REFERENCES players(id)
+    )`
+  );
+  const hasCampaignId = await columnExists(db, 'bookings', 'campaign_id');
+  if (hasCampaignId) {
+    await exec(
+      db,
+      `INSERT INTO bookings_new (
+        date, kind, campaign_id, start_time, end_time, location,
+        attendee_player_ids, created_at, created_by_player_id
+      )
+      SELECT
+        date, kind, campaign_id, start_time, end_time, location,
+        attendee_player_ids, created_at, created_by_player_id
+      FROM bookings`
+    );
+  } else {
+    await exec(
+      db,
+      `INSERT INTO bookings_new (
+        date, kind, start_time, end_time, location,
+        attendee_player_ids, created_at, created_by_player_id
+      )
+      SELECT
+        date, kind, start_time, end_time, location,
+        attendee_player_ids, created_at, created_by_player_id
+      FROM bookings`
+    );
+  }
+  await exec(db, 'DROP TABLE bookings');
+  await exec(db, 'ALTER TABLE bookings_new RENAME TO bookings');
+  await exec(db, 'CREATE INDEX IF NOT EXISTS idx_bookings_campaign_id ON bookings(campaign_id)');
+  await exec(db, 'PRAGMA foreign_keys = ON');
+  return true;
+}
+
 async function ensureBookingsCampaignId(db) {
   if (!(await tableExists(db, 'bookings'))) return;
   if (!(await columnExists(db, 'bookings', 'campaign_id'))) {
     await exec(db, 'ALTER TABLE bookings ADD COLUMN campaign_id TEXT');
   }
-  await exec(
-    db,
-    `UPDATE bookings SET campaign_id = CASE
-      WHEN kind = 'arcadia' THEN 'camp_arcadia'
-      ELSE 'camp_green_hunger'
-    END
-    WHERE campaign_id IS NULL OR campaign_id = ''`
-  );
+  if (await tableExists(db, 'campaigns')) {
+    await exec(
+      db,
+      `UPDATE bookings
+       SET campaign_id = (
+         SELECT id FROM campaigns WHERE slug = bookings.kind LIMIT 1
+       )
+       WHERE (campaign_id IS NULL OR campaign_id = '')
+         AND EXISTS (SELECT 1 FROM campaigns WHERE slug = bookings.kind)`
+    );
+    await exec(
+      db,
+      `UPDATE bookings SET campaign_id = CASE
+        WHEN kind = 'arcadia' THEN 'camp_arcadia'
+        ELSE 'camp_green_hunger'
+      END
+      WHERE campaign_id IS NULL OR campaign_id = ''`
+    );
+  }
   await exec(db, 'CREATE INDEX IF NOT EXISTS idx_bookings_campaign_id ON bookings(campaign_id)');
 }
 
@@ -151,8 +226,11 @@ export async function ensureSchema(db) {
       db,
       'CREATE INDEX IF NOT EXISTS idx_campaigns_status_current_sort ON campaigns(status, is_current, sort_order, name)'
     );
+    if (await relaxBookingsKindCheck(db)) {
+      steps.push('relaxed_bookings_kind_check');
+    }
     await ensureBookingsCampaignId(db);
-    if (steps.length === 0 || steps.includes('created_campaigns')) {
+    if (steps.length === 0 || steps.includes('created_campaigns') || steps.includes('relaxed_bookings_kind_check')) {
       steps.push('bookings_campaign_id');
     }
     await ensureTimPlayer(db);
