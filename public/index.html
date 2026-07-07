@@ -2549,14 +2549,14 @@
       }
       var wrap = document.getElementById('gate-campaign-cards');
       if (!wrap) return;
-      var activeAndParked = (campaigns || []).filter(function(c) { return c.status !== 'archived'; });
+      var gateCampaigns = (campaigns || []).filter(function(c) { return c.status === 'active'; });
       var html = '';
       function sessionId(g) {
         return String(g.date || '') + '|' + String(g.kind || '') + '|' + String((g && g.startTime) || '18:30');
       }
       var upcoming = getUpcomingSessions(confirmedGames || []);
       var firstUpcomingId = upcoming[0] ? sessionId(upcoming[0]) : '';
-      activeAndParked.forEach(function(c) {
+      gateCampaigns.forEach(function(c) {
         var items = '';
         var v = campaignVisualStyle(c);
         var t = v.t;
